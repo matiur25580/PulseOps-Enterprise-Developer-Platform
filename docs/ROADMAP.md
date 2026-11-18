@@ -29,16 +29,16 @@ Roadmap items are targets, not completed features. Each phase should produce a d
 
 ## Phase 3 — Observability and SRE
 - [x] Structured HTTP request logs, trace ID propagation, and Prometheus-compatible process metrics endpoint.
-- [ ] OpenTelemetry SDK/OTLP export and collector integration.
+- [x] W3C trace context, inbound HTTP spans, and optional OTLP/HTTP export (collector deployment and database/browser auto-instrumentation remain outstanding).
 - [ ] Durable external metrics/logs/traces backend and automatic service-level telemetry ingestion.
 - [x] Persisted per-service SLI/SLO definitions, rolling-window calculations, and remaining error-budget reporting (manual sample ingestion).
-- [ ] Alert rules, multi-window burn-rate calculations, and notification integrations.
+- [x] Tenant-scoped SLO alert rules, cooldown-based incident automation, and transactional outbox event processing (multi-window burn-rate and external notifications remain outstanding).
 
 ## Phase 4 — Delivery and FinOps
-- [ ] Deployment metadata integrations.
+- [x] GitHub repository webhook ingestion for merged pull requests and deployment statuses (manual webhook configuration; no GitHub App OAuth).
 - [ ] Cloud cost import and allocation.
 - [ ] Budgets, forecasts, and anomaly indicators.
-- [ ] DORA metric calculations with documented definitions.
+- [x] DORA metric calculations with sample sizes and documented definitions (webhook-derived deployment data; lead time matched by merge SHA).
 
 ## Phase 5 — AI-assisted operations
 - [ ] Incident summarization with source references.

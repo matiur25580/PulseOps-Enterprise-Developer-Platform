@@ -51,3 +51,13 @@ PulseOps handles operational metadata and potentially sensitive infrastructure c
 
 ## Remaining production hardening
 Invitation email delivery, email verification, refresh-token rotation/revocation, login/register rate limiting, password reset, managed secrets, security headers, and external security review remain outstanding. Treat this as an application foundation, not a production security certification.
+
+
+## GitHub webhook security
+- The webhook receiver accepts events only when `GITHUB_WEBHOOK_SECRET` is configured and the `X-Hub-Signature-256` HMAC matches the exact raw request body.
+- Signature comparisons use constant-time comparison. Invalid or missing signatures are rejected.
+- Delivery IDs are stored with a unique constraint and processed transactionally with the corresponding PR/deployment update to make GitHub retries idempotent.
+- The webhook handler stores only event metadata and normalized PR/deployment fields; it does not persist the full incoming payload.
+- The shared webhook secret is a deployment secret, never a repository setting or committed value. Configure the same secret in the GitHub webhook settings.
+- Repository-to-service mappings are tenant-scoped; the repository name is globally unique in PulseOps to avoid ambiguous webhook routing across workspaces.
+- GitHub webhook configuration is manual. GitHub App installation/OAuth and automatic webhook provisioning are not implemented.

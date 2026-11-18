@@ -78,3 +78,8 @@ Service dependencies are stored as tenant-scoped directed edges. The API rejects
 OTLP export is opt-in. Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to a complete OTLP/HTTP traces URL, or set `OTEL_EXPORTER_OTLP_ENDPOINT` as the base URL (the API appends `/v1/traces`). Configure `OTEL_SERVICE_NAME` and optional comma-separated `OTEL_EXPORTER_OTLP_HEADERS` for authenticated collectors. `OTEL_TRACES_SAMPLER_ARG` controls deterministic root sampling from 0 to 1; the default is 1.0. Incoming sampled W3C trace context remains sampled, while an unsampled parent remains unsampled.
 
 The exporter uses the Node.js built-in Fetch API, a bounded three-second timeout, and best-effort delivery so collector outages do not fail API requests. The context helper exposes `TraceContextService.inject(headers)` for outbound HTTP adapters. Current tracing covers inbound HTTP server spans; automatic database/Prisma spans, browser-to-API instrumentation, baggage, metrics OTLP export, and a collector deployment are not included. Without an OTLP endpoint, spans are not sent remotely, but trace IDs remain available in response headers and structured logs.
+
+
+## GitHub delivery intelligence
+
+A workspace can map a GitHub repository to one catalog service. A public webhook receiver validates GitHub's HMAC SHA-256 signature against the raw request body and persists delivery IDs idempotently. Merged pull requests and terminal deployment statuses are normalized into PostgreSQL records. DORA calculations are derived from those records and workspace incident history; they expose sample sizes and explicitly label proxy definitions. GitHub App OAuth, automatic webhook provisioning, and direct GitHub API polling are not implemented.
