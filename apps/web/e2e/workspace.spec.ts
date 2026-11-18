@@ -62,6 +62,19 @@ test('workspace owner can manage services and members while invited members get 
   await page.getByRole('button', { name: /Save changes/ }).click();
   await expect(page.getByRole('heading', { name: 'Browser Payments API Updated' })).toBeVisible();
 
+  await page.getByLabel('Incident title').fill('Browser API latency');
+  await page.getByLabel('Description', { exact: true }).last().fill('Latency increased after a deployment');
+  await page.getByLabel('Severity').selectOption('HIGH');
+  await page.getByRole('button', { name: /Create incident/ }).click();
+  const incidentRow = page.locator('.service-row').filter({ has: page.getByRole('heading', { name: 'Browser API latency' }) });
+  await expect(incidentRow).toContainText('HIGH · OPEN');
+  await incidentRow.getByRole('button', { name: 'Acknowledge' }).click();
+  await expect(incidentRow).toContainText('ACKNOWLEDGED');
+  await incidentRow.getByRole('button', { name: 'Resolve' }).click();
+  await expect(incidentRow).toContainText('RESOLVED');
+  await expect(page.getByRole('heading', { name: 'Audit Trail' })).toBeVisible();
+  await expect(page.getByText('INCIDENT_RESOLVED')).toBeVisible();
+
   const updatedRow = page.locator('.service-row').filter({ has: page.getByRole('heading', { name: 'Browser Payments API Updated' }) });
   page.once('dialog', dialog => dialog.accept());
   await updatedRow.getByRole('button', { name: 'Delete' }).click();
