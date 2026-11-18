@@ -35,8 +35,10 @@ export class AuthService {
  async login(input:LoginDto){
   const user=await this.prisma.user.findUnique({where:{email:input.email.trim().toLowerCase()},include:{memberships:{include:{tenant:true}}}});
   if(!user||!(await compare(input.password,user.passwordHash)))throw new UnauthorizedException('Invalid email or password');
-  const membership=user.memberships.find(item=>item.tenant.slug===input.tenantSlug);
-  if(!membership)throw new UnauthorizedException('Invalid email or password');
+  const workspaceIdentifier=input.tenantSlug.trim().toLowerCase();
+  const matches=user.memberships.filter(item=>item.tenant.slug.toLowerCase()===workspaceIdentifier||item.tenant.name.trim().toLowerCase()===workspaceIdentifier);
+  if(matches.length!==1)throw new UnauthorizedException('Invalid email or password');
+  const membership=matches[0];
   return this.issueSession(user,membership.tenant,membership.role);
  }
  async acceptInvitation(input:AcceptInvitationDto){
