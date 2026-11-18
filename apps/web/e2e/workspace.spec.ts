@@ -43,6 +43,9 @@ test('workspace owner can manage services and members while invited members get 
   await memberPage.getByLabel('Workspace slug').fill(tenantSlug);
   await memberPage.getByRole('button', { name: /Sign in/ }).last().click();
   await expect(memberPage.getByRole('heading', { name: 'Workspace members' })).toBeVisible();
+  await expect(memberPage.getByRole('heading', { name: 'Delivery & FinOps' })).toBeVisible();
+  await expect(memberPage.getByRole('button', { name: 'Create budget' })).toHaveCount(0);
+  await expect(memberPage.getByRole('button', { name: 'Add reference' })).toHaveCount(0);
   await expect(memberPage.getByRole('button', { name: /Create team/ })).toHaveCount(0);
   await expect(memberPage.getByRole('button', { name: /Register service/ })).toHaveCount(0);
   await expect(memberPage.getByRole('button', { name: /Create invitation/ })).toHaveCount(0);
@@ -82,12 +85,58 @@ test('workspace owner can manage services and members while invited members get 
   await page.getByRole('button', { name: 'Record SLI sample' }).click();
   await expect(page.locator('.slo-card')).toContainText('100.000%');
 
+
+  await expect(page.getByRole('heading', { name: 'Delivery & FinOps' })).toBeVisible();
+  await page.getByLabel('Budget name').fill('Browser monthly cloud budget');
+  await page.getByLabel('Amount').fill('10');
+  await page.getByLabel('Currency').fill('USD');
+  await page.getByLabel('Alert threshold %').fill('80');
+  await page.getByRole('button', { name: 'Create budget' }).click();
+  await expect(page.locator('.budget-row')).toContainText('Browser monthly cloud budget');
+
+  const billingMonth = new Date().toISOString().slice(0, 7);
+  const costPayload = {
+    records: [{
+      provider: 'AWS',
+      sourceRecordId: 'browser-cost-' + suffix,
+      resourceId: 'i-browser-' + suffix,
+      billingPeriodStart: billingMonth + '-01T00:00:00.000Z',
+      costAmount: 12.5,
+      currency: 'USD',
+      tags: { environment: 'test' },
+    }],
+  };
+  await page.getByLabel('JSON payload').fill(JSON.stringify(costPayload));
+  await page.getByRole('button', { name: /Import up to 500 records/ }).click();
+  await expect(page.locator('.finops-summary')).toContainText('1 cost line item');
+  await page.getByRole('button', { name: 'Evaluate thresholds' }).click();
+  await expect(page.getByText(/1 threshold\(s\) reached/)).toBeVisible();
+
+  await page.getByLabel('SERVICE').selectOption({ label: 'Browser Payments API Updated' });
+  await page.getByLabel('Reference title').fill('Payments recovery runbook');
+  await page.getByLabel('URL').fill('https://docs.example.com/payments/recovery');
+  await page.getByLabel('Category').selectOption('RUNBOOK');
+  await page.getByLabel('Set as primary').check();
+  await page.getByRole('button', { name: 'Add reference' }).click();
+  await expect(page.locator('.runbook-row')).toContainText('Payments recovery runbook');
+  await page.getByLabel('Primary contact').fill('primary-oncall@pulseops.test');
+  await page.getByLabel('Secondary contact').fill('secondary-oncall@pulseops.test');
+  await page.getByLabel('Escalate after (minutes)').fill('15');
+  await page.getByRole('button', { name: 'Save policy' }).click();
+  await expect(page.getByText(/Primary: primary-oncall@pulseops.test/)).toBeVisible();
+
   await page.getByLabel('Incident title').fill('Browser API latency');
   await page.getByLabel('Incident description').fill('Latency increased after a deployment');
+  await page.getByLabel('Service').selectOption({ label: 'Browser Payments API Updated' });
   await page.getByLabel('Severity').selectOption('HIGH');
   await page.getByRole('button', { name: /Create incident/ }).click();
   const incidentRow = page.locator('.service-row').filter({ has: page.getByRole('heading', { name: 'Browser API latency' }) });
   await expect(incidentRow).toContainText('HIGH · OPEN');
+  await expect(incidentRow).toContainText('Service: Browser Payments API Updated');
+  await incidentRow.getByRole('button', { name: 'Escalate' }).click();
+  await expect(incidentRow).toContainText('Escalation L1');
+  await incidentRow.getByRole('button', { name: 'Escalate' }).click();
+  await expect(incidentRow).toContainText('Escalation L2');
   await incidentRow.getByRole('button', { name: 'Acknowledge' }).click();
   await expect(incidentRow).toContainText('ACKNOWLEDGED');
   await incidentRow.getByRole('button', { name: 'Resolve' }).click();
