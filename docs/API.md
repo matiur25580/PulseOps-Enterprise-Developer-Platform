@@ -1,64 +1,38 @@
-# API Conventions
+# API
 
-## Status
+All endpoints are prefixed with `/api/v1`. JSON request/response bodies are used. DTO validation rejects unknown properties and invalid input.
 
-The API contract is a design baseline. No production API endpoints are implemented yet.
+## Health
+- `GET /health`: process liveness.
+- `GET /ready`: database readiness; returns 503 when PostgreSQL is unavailable.
 
-## Base path and versioning
+## Authentication
+- `POST /auth/register`: creates a workspace, first user, and ADMIN membership.
+  - Body: `{ "name": "Ada Lovelace", "email": "ada@example.com", "password": "at-least-12-characters", "tenantName": "Platform Team" }`
+  - Returns a one-hour JWT, user summary, generated tenant slug, and role.
+- `POST /auth/login`: validates email/password and a workspace slug.
+  - Body: `{ "email": "ada@example.com", "password": "at-least-12-characters", "tenantSlug": "platform-team-xxxxxxxx" }`
+  - Returns a one-hour JWT and identity/workspace summary.
 
-Use `/api/v1` for public application endpoints. Keep internal health endpoints separate from tenant-scoped business APIs.
+Send authenticated requests with `Authorization: Bearer <accessToken>`.
 
-## Response envelope
+## Service Catalog
+All routes require a valid bearer token. The workspace scope is derived from the verified token claim; clients cannot select or override a tenant ID.
 
-Successful responses should use a consistent envelope:
+- `GET /services`: list services in the authenticated workspace.
+- `POST /services`: create a service.
+- `PATCH /services/:id`: update a service belonging to the authenticated workspace.
+- `DELETE /services/:id`: delete a service belonging to the authenticated workspace.
 
-```json
-{
-  "data": {},
-  "meta": {
-    "requestId": "opaque-request-id"
-  }
-}
-```
+Create/update fields:
+- `name`: 2–100 characters.
+- `slug`: 2–100 characters; normalized to lowercase and unique per workspace.
+- `description`: optional, up to 1,000 characters.
+- `repository`: optional absolute URL.
+- `teamId`: optional UUID; must identify a team in the same workspace.
+- `lifecycle`: `EXPERIMENTAL`, `PRODUCTION`, `DEPRECATED`, or `RETIRED`.
 
-Errors should expose a stable machine-readable code and a safe human-readable message:
+A resource outside the caller's workspace is treated as not found. Duplicate workspace slugs return 409. Invalid payloads return 400; missing/invalid tokens return 401.
 
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "The request contains invalid fields.",
-    "details": []
-  },
-  "meta": {
-    "requestId": "opaque-request-id"
-  }
-}
-```
-
-Never return stack traces, SQL errors, tokens, or secret values to clients.
-
-## Initial endpoint candidates
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/api/v1/health` | Liveness |
-| GET | `/api/v1/ready` | Dependency readiness |
-| GET | `/api/v1/services` | List services in active tenant |
-| POST | `/api/v1/services` | Register a service |
-| GET | `/api/v1/incidents` | List incidents |
-| POST | `/api/v1/incidents` | Open an incident |
-| GET | `/api/v1/incidents/:id/events` | Read incident timeline |
-
-These are planned routes, not currently available endpoints.
-
-## API requirements
-
-- Validate all inputs at the boundary.
-- Authenticate every non-public route.
-- Authorize at the resource and action level.
-- Derive tenant context from trusted identity/session context, never from an unchecked client field.
-- Paginate collection endpoints; use cursor pagination for large or changing datasets.
-- Apply rate limits to authentication, AI, and expensive query endpoints.
-- Support idempotency keys for retriable create/execute operations.
-- Publish an OpenAPI specification alongside implemented routes.
+## Security notes
+JWTs expire after one hour. Passwords are hashed with bcryptjs (cost factor 12). The local fallback secret is for development only; production startup fails unless `JWT_SECRET` is set. This initial milestone does not yet implement refresh tokens, email verification, login rate limiting, password reset, or audit events.

@@ -45,3 +45,16 @@ Audit privileged actions with actor, tenant, action, target, timestamp, request 
 ## Incident response
 
 Maintain documented procedures for credential compromise, tenant isolation failure, data exposure, and supply-chain vulnerabilities. Define a security contact before public production use.
+
+
+## Implemented authentication and workspace isolation
+- User passwords are stored as bcrypt hashes (cost factor 12), never as plaintext.
+- API access tokens are signed JWTs with a one-hour expiry.
+- Production startup refuses to run without `JWT_SECRET`; configure it through the deployment secret manager.
+- Registration creates a workspace and an ADMIN membership in one database transaction.
+- Service Catalog controllers require a verified bearer token. Tenant scope is read from the token, never from a request header or body.
+- Service list, lookup-before-update/delete, and create operations are tenant-scoped. Team references are checked against the same tenant.
+- Unknown DTO properties are rejected by the global validation pipe.
+
+## Remaining production hardening
+Email verification, refresh-token rotation/revocation, login/register rate limiting, password reset, audit logging, CSRF considerations for browser cookie storage, security headers, and automated authorization/e2e tests are not yet implemented. Treat this as an application foundation, not a production security certification.

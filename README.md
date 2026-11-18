@@ -4,7 +4,7 @@
 
 PulseOps brings service ownership, operational signals, incident workflows, reliability objectives, and cloud-cost visibility into one engineering workspace.
 
-> **Project status:** The repository foundation and first application shell are in progress. The web app, API health endpoints, and database schema are the first runnable milestone. External integrations and production-grade authentication are not yet implemented.
+> **Project status:** The repository includes a Next.js application shell, NestJS API, PostgreSQL/Prisma schema, JWT-based authentication, tenant-scoped Service Catalog CRUD, and CI build/schema checks. Production hardening (managed secrets, email verification, rate limiting, refresh-token/session management, and end-to-end tests) remains outstanding.
 
 ## Current stack
 
@@ -43,30 +43,34 @@ PulseOps brings service ownership, operational signals, incident workflows, reli
    docker compose up -d postgres redis
    ```
 
-4. Generate Prisma Client and validate the schema:
+4. Set a strong local `JWT_SECRET` in `apps/api/.env` before starting the API. Never use the example value outside local development.
+
+5. Generate Prisma Client and validate the schema:
 
    ```bash
    pnpm db:generate
    pnpm --filter @pulseops/api prisma:validate
    ```
 
-5. Apply the initial database migration:
+6. Apply all database migrations:
 
    ```bash
    pnpm --filter @pulseops/api prisma:migrate
    ```
 
-6. Start the API and web app in separate terminals:
+7. Start the API and web app in separate terminals:
 
    ```bash
    pnpm dev:api
    pnpm dev:web
    ```
 
-7. Open:
+8. Open:
    - Web: http://localhost:3000
    - API liveness: http://localhost:4000/api/v1/health
    - API readiness: http://localhost:4000/api/v1/ready
+   - Auth registration/login: `POST http://localhost:4000/api/v1/auth/register` and `/auth/login`
+   - Service Catalog: `GET/POST http://localhost:4000/api/v1/services` (Bearer token required)
 
 The readiness endpoint checks PostgreSQL and returns HTTP 503 if the database is unavailable.
 
