@@ -277,3 +277,27 @@ model AlertEvent {
   @@index([ruleId, createdAt])
   @@map("alert_events")
 }
+
+
+model OutboxEvent {
+  id             String    @id @default(uuid()) @db.Uuid
+  eventType      String    @map("event_type")
+  aggregateType  String    @map("aggregate_type")
+  aggregateId    String    @map("aggregate_id") @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  idempotencyKey String    @unique @map("idempotency_key")
+  payload        Json
+  status         String    @default("PENDING")
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(8) @map("max_attempts")
+  availableAt    DateTime  @default(now()) @map("available_at")
+  lockedAt       DateTime? @map("locked_at")
+  processedAt    DateTime? @map("processed_at")
+  lastError      String?   @map("last_error")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@index([status, availableAt, createdAt])
+  @@index([tenantId, createdAt])
+  @@map("outbox_events")
+}
