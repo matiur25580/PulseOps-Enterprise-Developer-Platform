@@ -15,6 +15,7 @@ export class SlosService {
     const service = await this.prisma.service.findFirst({ where: { id: serviceId, tenantId }, select: { id: true } });
     if (!service) throw new NotFoundException('Service not found in this workspace');
     if (input.indicator === 'LATENCY' && !input.latencyThresholdMs) throw new BadRequestException('Latency SLO requires latencyThresholdMs');
+    if (input.indicator === 'AVAILABILITY' && input.latencyThresholdMs !== undefined) throw new BadRequestException('Availability SLO must not include latencyThresholdMs');
     const slo = await this.prisma.sloDefinition.create({ data: { tenantId, serviceId, name: input.name.trim(), indicator: input.indicator as SloIndicator, targetPercent: input.targetPercent, windowDays: input.windowDays ?? 30, latencyThresholdMs: input.latencyThresholdMs }, include: { service: { select: { id: true, name: true, slug: true } } } });
     await this.audit.record({ tenantId, actorId, action: 'SLO_CREATED', entityType: 'SLO', entityId: slo.id });
     return this.withStatus(slo);
