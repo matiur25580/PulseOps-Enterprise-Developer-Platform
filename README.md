@@ -40,7 +40,7 @@ PulseOps brings service ownership, operational signals, incident workflows, reli
 - Members: `GET /api/v1/members`, `POST /api/v1/members/invitations`, `PATCH /api/v1/members/:userId/role`, and `DELETE /api/v1/members/:userId` (administrative actions require ADMIN).
 - Invitation acceptance: `POST /api/v1/auth/accept-invitation` (single-use seven-day token; email delivery is not configured yet).
 - Incidents: `GET/POST /api/v1/incidents`, `PATCH /api/v1/incidents/:id/assign`, and `POST /api/v1/incidents/:id/acknowledge` or `/resolve`.
-- Audit trail: `GET /api/v1/audit-logs` (ADMIN only; records privileged workspace and incident actions).
+- Audit trail: `GET /api/v1/audit-logs` (ADMIN only; records privileged workspace and incident actions).\n- Service dependencies: `GET/POST/DELETE /api/v1/service-dependencies` (writes require ADMIN; cycle prevention enabled).\n- SLOs: `GET /api/v1/slos`, `POST /api/v1/slos/services/:serviceId`, `POST /api/v1/slos/:id/samples`, and `DELETE /api/v1/slos/:id` (writes require ADMIN; sample ingestion is manual).\n- Metrics: `GET /api/v1/metrics` (Prometheus exposition; `METRICS_TOKEN` required in production).
 
 The readiness endpoint checks PostgreSQL and returns HTTP 503 if the database is unavailable. Team and service APIs derive workspace scope from the verified JWT; clients cannot override tenant IDs.
 
