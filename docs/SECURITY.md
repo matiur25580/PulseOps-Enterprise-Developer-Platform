@@ -34,7 +34,6 @@ PulseOps handles operational metadata and potentially sensitive infrastructure c
 - Passwords are stored as bcrypt hashes (cost factor 12); access tokens are signed JWTs with a one-hour expiry.
 - Production startup requires `JWT_SECRET`; registration creates a workspace and ADMIN membership transactionally.
 - Service, Team, and Member controllers require verified bearer tokens. Tenant scope comes from the token, not a request header or body.
-- Service, Team, and Member controllers require verified bearer tokens. Tenant scope comes from the token, not a request header or body.
 - The JWT guard revalidates workspace membership and current role from PostgreSQL on every request. Removed members lose access immediately; role changes apply to already-issued tokens.
 - ADMIN-only write operations are enforced by API guards. MEMBER is read-only for Team and Service resources.
 - Workspace invitations store only SHA-256 token hashes, are single-use, expire after seven days, and always grant MEMBER. An administrator must securely share the one-time token until an email provider is integrated.
