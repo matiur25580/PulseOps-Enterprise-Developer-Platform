@@ -179,7 +179,9 @@ export default function Home() {
     try {
       await apiRequest(`/services/${id}`, token, { method: 'DELETE' });
       setServices(current => current.filter(item => item.id !== id));
-      setNotice('Service deleted.');
+      setDependencies(current => current.filter(edge => edge.sourceService.id !== id && edge.targetService.id !== id));
+      setSlos(current => current.filter(slo => slo.service.id !== id));
+      setNotice('Service deleted. Related dependency edges and SLOs were removed.');
       if (editingId === id) { setEditingId(null); setServiceForm(emptyService); }
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not delete service'); }
     finally { setBusy(false); }
