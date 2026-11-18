@@ -1,0 +1,41 @@
+name: Production Deployment Verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: Deployed API origin, for example https://pulseops-api.onrender.com
+        required: true
+        type: string
+      web_base_url:
+        description: Deployed web origin, for example https://pulseops.vercel.app
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Validate deployment URLs
+        env:
+          API_BASE_URL: ${{ inputs.api_base_url }}
+          WEB_BASE_URL: ${{ inputs.web_base_url }}
+        run: |
+          case "$API_BASE_URL" in https://*) ;; *) echo "::error::API URL must use HTTPS"; exit 1;; esac
+          case "$WEB_BASE_URL" in https://*) ;; *) echo "::error::Web URL must use HTTPS"; exit 1;; esac
+      - name: Verify API liveness
+        env:
+          API_BASE_URL: ${{ inputs.api_base_url }}
+        run: curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "$API_BASE_URL/api/v1/health"
+      - name: Verify PostgreSQL readiness
+        env:
+          API_BASE_URL: ${{ inputs.api_base_url }}
+        run: curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "$API_BASE_URL/api/v1/ready"
+      - name: Verify web application
+        env:
+          WEB_BASE_URL: ${{ inputs.web_base_url }}
+        run: curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "$WEB_BASE_URL/"
