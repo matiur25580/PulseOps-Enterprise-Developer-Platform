@@ -2,7 +2,7 @@ databases:
   - name: pulseops-test-db
     plan: free
     region: singapore
-    postgresMajorVersion: "18"
+    postgresMajorVersion: "16"
 
 services:
   - type: web
