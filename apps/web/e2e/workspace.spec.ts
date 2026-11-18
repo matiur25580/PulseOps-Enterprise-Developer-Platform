@@ -163,7 +163,7 @@ test('workspace owner can manage services and members while invited members get 
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('Password').fill(password);
-  await page.getByLabel('Workspace slug').fill(tenantSlug);
+  await page.getByLabel('Workspace name or slug').fill(tenantSlug);
   await page.getByRole('button', { name: /Sign in/ }).last().click();
   await expect(page.getByRole('heading', { name: 'Your workspace.' })).toBeVisible();
   await expect(page.getByText('Signed in successfully.')).toBeVisible();
