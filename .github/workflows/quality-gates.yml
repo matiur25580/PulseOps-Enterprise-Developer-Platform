@@ -46,8 +46,8 @@ jobs:
         run: pnpm db:generate
       - name: Validate Prisma schema
         run: pnpm --filter @pulseops/api prisma:validate
-      - name: Apply test database schema
-        run: pnpm --filter @pulseops/api exec prisma db push
+      - name: Apply versioned database migrations
+        run: pnpm --filter @pulseops/api exec prisma migrate deploy
       - name: Run API unit tests
         run: pnpm test:api
       - name: Run PostgreSQL integration tests
