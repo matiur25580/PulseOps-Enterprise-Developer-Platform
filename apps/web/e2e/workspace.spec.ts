@@ -30,8 +30,9 @@ test('workspace owner can register, create, edit and delete a service, then sign
   await page.getByRole('button', { name: /Save changes/ }).click();
   await expect(page.getByRole('heading', { name: 'Browser Payments API Updated' })).toBeVisible();
 
+  const updatedRow = page.locator('.service-row').filter({ has: page.getByRole('heading', { name: 'Browser Payments API Updated' }) });
   page.once('dialog', dialog => dialog.accept());
-  await serviceRow.getByRole('button', { name: 'Delete' }).click();
+  await updatedRow.getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByText('No services yet')).toBeVisible();
 
   await page.getByRole('button', { name: 'Sign out' }).click();
