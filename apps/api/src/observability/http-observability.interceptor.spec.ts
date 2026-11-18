@@ -54,4 +54,22 @@ describe('HttpObservabilityInterceptor tracing', () => {
     interceptor.intercept(context, { handle: () => of('ok') }).subscribe();
     expect(exporter.export).not.toHaveBeenCalled();
   });
+  it('starts a new unsampled trace when the incoming traceparent is invalid', () => {
+    process.env.OTEL_TRACES_SAMPLER_ARG = '0';
+    const metrics = { record: jest.fn() } as unknown as MetricsService;
+    const exporter = { export: jest.fn() } as unknown as OtlpTraceExporter;
+    const interceptor = new HttpObservabilityInterceptor(metrics, new TraceContextService(), exporter);
+    const response = { statusCode: 200, setHeader: jest.fn() };
+    const request = {
+      header: (name: string) => name === 'traceparent' ? '00-00000000000000000000000000000000-0000000000000000-01' : undefined,
+      route: { path: '/health' }, path: '/health', method: 'GET', hostname: 'api.example.test',
+    };
+    const context = { switchToHttp: () => ({ getRequest: () => request, getResponse: () => response }) } as any;
+    interceptor.intercept(context, { handle: () => of('ok') }).subscribe();
+    const generatedTrace = response.setHeader.mock.calls.find((call: unknown[]) => call[0] === 'traceparent')?.[1] as string;
+    expect(generatedTrace).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-00$/);
+    expect(generatedTrace).not.toContain(traceId);
+    expect(exporter.export).not.toHaveBeenCalled();
+  });
+
 });
