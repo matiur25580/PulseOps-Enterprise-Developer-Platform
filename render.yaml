@@ -13,8 +13,7 @@ services:
     region: singapore
     branch: main
     autoDeployTrigger: checksPass
-    buildCommand: corepack enable && corepack prepare pnpm@10.4.1 --activate && pnpm install --no-frozen-lockfile && pnpm --filter @pulseops/api build
-    preDeployCommand: pnpm --filter @pulseops/api exec prisma migrate deploy
+    buildCommand: corepack enable && corepack prepare pnpm@10.4.1 --activate && pnpm install --no-frozen-lockfile && pnpm --filter @pulseops/api exec prisma migrate deploy && pnpm --filter @pulseops/api build
     startCommand: node apps/api/dist/main.js
     healthCheckPath: /api/v1/health
     envVars:
