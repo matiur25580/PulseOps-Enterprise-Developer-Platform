@@ -104,3 +104,16 @@ Worker configuration:
 - `OUTBOX_POLL_INTERVAL_MS` controls polling cadence (default 2000 ms, capped at 60000).
 
 The initial `SLO_ALERT_TRIGGERED` handler emits a structured processing log only. Email, Slack, PagerDuty, external queues, operator replay tooling, and exactly-once external side effects are not implemented. Consumers of external systems must use the event ID/idempotency key to make their own side effects idempotent.
+
+
+## Distributed tracing
+The API accepts W3C Trace Context `traceparent` headers and creates a server span for each HTTP request. Responses include `traceparent` (the server span context) and `x-trace-id`. Structured request logs include trace and span IDs.
+
+OTLP/HTTP export is optional:
+- `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`: complete traces endpoint.
+- `OTEL_EXPORTER_OTLP_ENDPOINT`: base endpoint; `/v1/traces` is appended.
+- `OTEL_SERVICE_NAME`: resource service name (default `pulseops-api`).
+- `OTEL_EXPORTER_OTLP_HEADERS`: optional comma-separated HTTP headers.
+- `OTEL_TRACES_SAMPLER_ARG`: deterministic root sampling ratio, 0–1 (default 1).
+
+Unset both endpoint variables to disable remote trace export. Export is best-effort with a three-second timeout and never blocks or fails the API request. Outbound HTTP adapters can propagate the active context by injecting `TraceContextService` and calling `inject(existingHeaders)`. This milestone adds inbound HTTP spans; automatic Prisma/database spans and browser instrumentation are not yet implemented.
