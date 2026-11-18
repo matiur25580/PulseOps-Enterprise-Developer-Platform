@@ -40,6 +40,12 @@ flowchart LR
 | Event processing | Retries and asynchronous workflows | Introduce after synchronous slice works |
 | Telemetry | Traces, metrics, structured logs | OpenTelemetry conventions |
 
+## Current observability slice
+
+The API currently emits structured JSON HTTP request events, propagates W3C trace IDs when supplied (or creates a trace ID), and exposes process-local Prometheus request counters and duration histograms at `/api/v1/metrics`. These are lightweight process metrics, not an OTLP trace pipeline or durable metrics backend. Service-level objectives are persisted per service and calculated from authenticated SLI sample ingestion; production traffic is not yet automatically mapped to service SLI events.
+
+Service dependencies are stored as tenant-scoped directed edges. The API rejects self-edges and detects cycles before insertion.
+
 ## Request flow
 
 1. The browser sends an authenticated request to the API.
