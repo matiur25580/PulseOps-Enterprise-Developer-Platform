@@ -26,7 +26,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
@@ -47,6 +46,7 @@ jobs:
             docker-compose.yml
             .env.example
             apps/api/prisma/schema.prisma
+            apps/api/prisma/migrations/202611180001_init/migration.sql
             apps/api/src/main.ts
             apps/web/src/app/page.tsx
           )

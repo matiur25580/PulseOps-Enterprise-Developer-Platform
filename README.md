@@ -14,21 +14,6 @@ PulseOps brings service ownership, operational signals, incident workflows, reli
 - **Local infrastructure:** Docker Compose, Redis
 - **CI:** GitHub Actions
 
-## Repository layout
-
-```text
-apps/
-  web/                 # Next.js developer portal
-  api/                 # NestJS core API
-    prisma/             # Prisma schema
-    src/                # API modules
-docs/                   # architecture and engineering docs
-infrastructure/         # future deployment assets
-monitoring/             # future telemetry configuration
-.github/workflows/      # CI workflows
-docker-compose.yml      # local PostgreSQL and Redis
-```
-
 ## Prerequisites
 
 - Node.js 20 or newer
@@ -43,13 +28,14 @@ docker-compose.yml      # local PostgreSQL and Redis
    pnpm install
    ```
 
-2. Create local configuration:
+2. Create local environment files:
 
    ```bash
    cp .env.example .env
+   cp apps/api/.env.example apps/api/.env
    ```
 
-   Use only local development credentials. Never commit real secrets.
+   The root file configures Docker Compose. The API file configures NestJS and Prisma. Use local-only credentials and never commit real secrets.
 
 3. Start PostgreSQL and Redis:
 
@@ -64,14 +50,20 @@ docker-compose.yml      # local PostgreSQL and Redis
    pnpm --filter @pulseops/api prisma:validate
    ```
 
-5. Start the API and web app in separate terminals:
+5. Apply the initial database migration:
+
+   ```bash
+   pnpm --filter @pulseops/api prisma:migrate
+   ```
+
+6. Start the API and web app in separate terminals:
 
    ```bash
    pnpm dev:api
    pnpm dev:web
    ```
 
-6. Open:
+7. Open:
    - Web: http://localhost:3000
    - API liveness: http://localhost:4000/api/v1/health
    - API readiness: http://localhost:4000/api/v1/ready
@@ -80,7 +72,7 @@ The readiness endpoint checks PostgreSQL and returns HTTP 503 if the database is
 
 ## Environment variables
 
-The root `.env.example` documents local database and API configuration. App-specific examples are available in `apps/api/.env.example` and `apps/web/.env.example`.
+See the root `.env.example`, `apps/api/.env.example`, and `apps/web/.env.example`. Environment files are local-only and must not be committed.
 
 ## Planned capabilities
 
