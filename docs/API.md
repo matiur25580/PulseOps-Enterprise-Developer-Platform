@@ -152,3 +152,39 @@ Incident creation accepts optional `serviceId`; it must reference a service in t
 - `POST /incidents/:id/escalate`: manually advance an unresolved service-linked incident to the next configured contact. Level 1 targets the primary contact; level 2 targets the secondary contact. The compare-and-set update, incident timeline event and audit event are committed transactionally. Escalation stops when no further contact is configured.
 
 Escalation is currently a recorded workflow action only: PulseOps does not send email/SMS/Slack notifications or automatically escalate after the configured interval. The interval and contact are included in the event metadata for operators and future notification integrations.
+
+
+## FinOps cost allocation and budgets
+
+All endpoints require authentication and workspace membership. Cost imports, budget creation and budget evaluation are ADMIN-only.
+- `POST /finops/cost-records/import`: import 1–500 normalized cost line items. Each record includes provider (`AWS`, `AZURE`, `GCP`, `OTHER`), provider-specific `sourceRecordId`, `resourceId`, UTC first-of-month `billingPeriodStart`, non-negative `costAmount` (up to six decimal places), three-letter `currency`, optional same-workspace `serviceId`, region/resource name and tags. Re-importing the same provider/source record updates the existing row instead of duplicating it.
+- `GET /finops/costs?period=YYYY-MM`: returns totals by currency, provider and service, plus unallocated spend. Different currencies are never summed together and no FX conversion is assumed.
+- `POST /finops/budgets`: create a monthly budget with name, amount, currency, optional serviceId (omit for workspace-wide), and optional thresholdPercent (default 80).
+- `GET /finops/budgets?period=YYYY-MM`: returns each budget's actual spend, utilization and sample count for the period.
+- `POST /finops/budgets/evaluate?period=YYYY-MM`: manually evaluate enabled budgets. Threshold events are idempotent per budget, month and threshold.
+
+This milestone accepts normalized JSON cost line items from an export adapter. It does not connect to AWS Cost Explorer, Azure Cost Management, or Google Cloud Billing APIs, and it does not parse provider CSV exports directly. No exchange-rate conversion, forecast, or automatic evaluation scheduler is implemented. Missing source rows return `NO_DATA`, not a fabricated zero-spend signal.
+
+
+Example cost import payload:
+
+```json
+{
+  "records": [
+    {
+      "provider": "AWS",
+      "sourceRecordId": "cur-line-2026-11-0001",
+      "resourceId": "arn:aws:ec2:ap-south-1:123456789012:instance/i-abc123",
+      "resourceName": "payments-api-prod",
+      "region": "ap-south-1",
+      "billingPeriodStart": "2026-11-01T00:00:00.000Z",
+      "costAmount": 18.425,
+      "currency": "USD",
+      "serviceId": "00000000-0000-4000-8000-000000000001",
+      "tags": { "environment": "production", "team": "platform" }
+    }
+  ]
+}
+```
+
+Do not put credentials, access tokens, customer data or other secrets in cost tags.

@@ -68,3 +68,10 @@ Invitation email delivery, email verification, refresh-token rotation/revocation
 - Only ADMIN members can create/delete runbooks or change escalation policies. Read access requires authenticated workspace membership.
 - Incident escalation uses a compare-and-set level transition and commits the timeline and audit records in the same serializable transaction.
 - Escalation currently records the selected contact in event metadata; no external notification is sent and no automatic timer is running.
+
+
+## FinOps data controls
+- Cost imports are ADMIN-only, bounded to 500 records per request, validated for currency, decimal precision, billing month and tenant-owned service allocation.
+- Provider source record IDs are idempotent within tenant/provider scope; duplicate imports update the existing normalized row.
+- Cost and budget queries always derive tenant scope from the authenticated identity. Budget events are stored idempotently.
+- Provider credentials are not collected or stored. This milestone imports normalized JSON exports and does not call cloud provider billing APIs.

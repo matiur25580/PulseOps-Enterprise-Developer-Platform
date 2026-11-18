@@ -46,7 +46,7 @@ PulseOps brings service ownership, operational signals, incident workflows, reli
 - Metrics: `GET /api/v1/metrics` (Prometheus exposition; `METRICS_TOKEN` required in production).
 - GitHub: `POST /api/v1/integrations/github/repositories`, `GET /api/v1/integrations/github/repositories`, `DELETE /api/v1/integrations/github/repositories/:id`; webhook receiver `POST /api/v1/integrations/github/webhook`.
 - DORA: `GET /api/v1/engineering-metrics/dora?windowDays=30` (7–90 day window; requires connected GitHub repositories and configured webhooks).
-- Runbooks: `GET/POST /api/v1/services/:serviceId/runbooks` and `DELETE /api/v1/services/:serviceId/runbooks/:runbookId` (mutations require ADMIN).
+- FinOps: `POST /api/v1/finops/cost-records/import`, `GET /api/v1/finops/costs`, `GET/POST /api/v1/finops/budgets`, and `POST /api/v1/finops/budgets/evaluate` (normalized JSON imports; no cloud billing API integration yet).\n- Runbooks: `GET/POST /api/v1/services/:serviceId/runbooks` and `DELETE /api/v1/services/:serviceId/runbooks/:runbookId` (mutations require ADMIN).
 - Escalation: `GET/PUT /api/v1/services/:serviceId/escalation-policy` and `POST /api/v1/incidents/:id/escalate` (policy writes require ADMIN; escalation is manually triggered and audited).
 
 The readiness endpoint checks PostgreSQL and returns HTTP 503 if the database is unavailable. Team and service APIs derive workspace scope from the verified JWT; clients cannot override tenant IDs.
