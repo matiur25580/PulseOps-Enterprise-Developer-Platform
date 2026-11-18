@@ -87,3 +87,7 @@ See [ROADMAP.md](docs/ROADMAP.md) for implementation status. Planned features ar
 
 ## License
 A license has not yet been selected. Until one is added, all rights are reserved by the repository owner.
+
+### GitHub webhook setup for delivery intelligence
+
+Connect a service to its GitHub repository as an ADMIN, set `GITHUB_WEBHOOK_SECRET` in the API environment, and configure the repository's webhook to send JSON `pull_request` and `deployment_status` events to `/api/v1/integrations/github/webhook`. The DORA endpoint returns null for metrics without sufficient source data; see [API documentation](docs/API.md) for metric definitions and limitations.
