@@ -77,7 +77,7 @@ export class GitHubService {
         });
         if (eventName === 'pull_request') await this.persistPullRequest(tx, integration.id, payload);
         if (eventName === 'deployment_status') await this.persistDeployment(tx, integration.id, payload);
-      });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         return { accepted: true, duplicate: true };
