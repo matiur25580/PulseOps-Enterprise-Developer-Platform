@@ -2,7 +2,7 @@
 
 ## Current state
 
-There is no deployable application yet. The repository foundation will add local infrastructure configuration first; application services and cloud deployment will follow after a tested vertical slice exists.
+The repository now contains a CI-tested Next.js portal and NestJS API with PostgreSQL migrations. Production infrastructure is not provisioned for this repository yet; use the production runbook below before deploying.
 
 ## Local development direction
 
