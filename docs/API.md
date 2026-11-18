@@ -31,8 +31,22 @@ All routes require a valid bearer token. Workspace scope comes from the verified
 
 Team names are unique per workspace. Duplicate names return 409; resources outside the caller's workspace return 404. Invalid payloads return 400; missing/invalid tokens return 401.
 
+## Incident management
+All routes require a valid bearer token and are scoped to the authenticated workspace.
+- GET /incidents: list workspace incidents with assignee and chronological timeline.
+- POST /incidents: create an incident. Body includes title, optional description, severity (CRITICAL, HIGH, MEDIUM, LOW), and optional assignedToUserId.
+- PATCH /incidents/:id/assign: assign an open/acknowledged incident to a workspace member.
+- POST /incidents/:id/acknowledge: transition an OPEN incident to ACKNOWLEDGED.
+- POST /incidents/:id/resolve: transition an OPEN or ACKNOWLEDGED incident to RESOLVED. Optional body: { "message": "Rollback completed" }.
+
+Incident transitions append timeline events. Resolved incidents cannot be reassigned or acknowledged again. Assignees must be members of the same workspace.
+
+## Audit trail
+- GET /audit-logs?limit=50: ADMIN only; returns the latest 1–100 workspace audit records with actor details.
+- Audit events are recorded for Team and Service create/update/delete, invitation create/revoke, member role changes/removal, and incident create/assign/acknowledge/resolve. No API endpoint mutates or deletes audit records. Workspace scope is derived from the authenticated JWT.
+
 ## Security notes
-JWTs expire after one hour. Passwords are hashed with bcryptjs (cost factor 12). Production startup requires `JWT_SECRET`. Refresh tokens, email verification, login rate limiting, password reset, and audit events remain outstanding.
+JWTs expire after one hour. Passwords are hashed with bcryptjs (cost factor 12). Production startup requires `JWT_SECRET`. Refresh tokens, email verification, login rate limiting, password reset, managed secrets, and security headers remain outstanding.
 
 ## Workspace members and RBAC
 - `GET /members`: list members in the authenticated workspace (ADMIN and MEMBER).
