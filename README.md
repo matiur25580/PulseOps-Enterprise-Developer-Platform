@@ -2,40 +2,17 @@
 
 **An AI-assisted developer platform for cloud operations, observability, incident response, SRE, and FinOps.**
 
-PulseOps is an engineering platform project designed to bring service ownership, operational signals, incident workflows, reliability objectives, and cloud-cost visibility into one workspace.
+PulseOps brings service ownership, operational signals, incident workflows, reliability objectives, and cloud-cost visibility into one engineering workspace.
 
-> **Project status:** Foundation in progress. This repository currently contains architecture and engineering foundations; integrations and production capabilities are not yet implemented. Any future demo data or simulated integrations will be clearly labelled.
+> **Project status:** The repository foundation and first application shell are in progress. The web app, API health endpoints, and database schema are the first runnable milestone. External integrations and production-grade authentication are not yet implemented.
 
-## Why PulseOps?
+## Current stack
 
-Modern engineering teams often work across disconnected tools for service catalogs, deployments, monitoring, incidents, reliability objectives, and cloud spend. PulseOps aims to provide a coherent operational view while keeping automation safe, auditable, and human-approved.
-
-## Planned capabilities
-
-| Area | Intended capability |
-| --- | --- |
-| Developer portal | Service catalog, ownership, dependencies, runbooks |
-| Delivery | Deployment history, release metadata, CI/CD integration |
-| Observability | Metrics, logs, traces, service health |
-| Incident management | Incident timeline, severity, ownership, escalation |
-| AIOps | Incident summaries, anomaly context, root-cause hypotheses |
-| SRE | SLIs, SLOs, error budgets, burn-rate signals |
-| FinOps | Cloud usage, budgets, cost allocation, trend analysis |
-| Governance | RBAC, audit events, secure configuration |
-| Engineering analytics | DORA metrics and operational trends |
-
-## Architecture direction
-
-- **Web:** Next.js, React, TypeScript
-- **Core API:** NestJS, TypeScript
-- **AI service:** Python, FastAPI
-- **Data:** PostgreSQL, Prisma, Redis
-- **Events:** Kafka or Redpanda (later phase)
-- **Telemetry:** OpenTelemetry, Prometheus, Grafana
-- **Infrastructure:** Docker, Kubernetes, Terraform
-- **Quality:** Vitest/Jest, Pytest, Playwright, GitHub Actions
-
-The architecture is intentionally modular. The first implementation milestone will establish a working vertical slice before introducing distributed infrastructure.
+- **Web:** Next.js 15, React 19, TypeScript
+- **API:** NestJS 10, TypeScript
+- **Data:** PostgreSQL 16, Prisma 6
+- **Local infrastructure:** Docker Compose, Redis
+- **CI:** GitHub Actions
 
 ## Repository layout
 
@@ -43,57 +20,99 @@ The architecture is intentionally modular. The first implementation milestone wi
 apps/
   web/                 # Next.js developer portal
   api/                 # NestJS core API
-  ai-service/          # FastAPI intelligence service
-services/
-  event-worker/        # asynchronous event processing (planned)
-  incident-engine/     # incident workflows (planned)
-  cost-engine/         # cost aggregation (planned)
-packages/
-  shared-types/        # shared contracts
-  validation/          # shared validation schemas
-  config/              # shared tooling configuration
-infrastructure/
-  docker/
-  kubernetes/
-  terraform/
-monitoring/
-  prometheus/
-  grafana/
-  opentelemetry/
-docs/
-  ARCHITECTURE.md
-  DATABASE.md
-  API.md
-  SECURITY.md
-  DEPLOYMENT.md
-  ROADMAP.md
-.github/workflows/
+    prisma/             # Prisma schema
+    src/                # API modules
+docs/                   # architecture and engineering docs
+infrastructure/         # future deployment assets
+monitoring/             # future telemetry configuration
+.github/workflows/      # CI workflows
+docker-compose.yml      # local PostgreSQL and Redis
 ```
 
-## Getting started
+## Prerequisites
 
-The runnable application setup is being added in the Foundation milestone. Until then, this repository is a design and implementation scaffold, not a deployable product.
+- Node.js 20 or newer
+- pnpm 10
+- Docker Engine/Desktop with Compose
 
-See:
+## Local setup
+
+1. Install dependencies:
+
+   ```bash
+   pnpm install
+   ```
+
+2. Create local configuration:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Use only local development credentials. Never commit real secrets.
+
+3. Start PostgreSQL and Redis:
+
+   ```bash
+   docker compose up -d postgres redis
+   ```
+
+4. Generate Prisma Client and validate the schema:
+
+   ```bash
+   pnpm db:generate
+   pnpm --filter @pulseops/api prisma:validate
+   ```
+
+5. Start the API and web app in separate terminals:
+
+   ```bash
+   pnpm dev:api
+   pnpm dev:web
+   ```
+
+6. Open:
+   - Web: http://localhost:3000
+   - API liveness: http://localhost:4000/api/v1/health
+   - API readiness: http://localhost:4000/api/v1/ready
+
+The readiness endpoint checks PostgreSQL and returns HTTP 503 if the database is unavailable.
+
+## Environment variables
+
+The root `.env.example` documents local database and API configuration. App-specific examples are available in `apps/api/.env.example` and `apps/web/.env.example`.
+
+## Planned capabilities
+
+- Developer portal and service catalog
+- Deployment and CI/CD visibility
+- Metrics, logs, and traces
+- Incident management and runbooks
+- SLI/SLO and error-budget tracking
+- FinOps and cloud cost allocation
+- AI-assisted incident analysis with human-approved remediation
+- Tenant-aware access control and audit history
+
+See [ROADMAP.md](docs/ROADMAP.md) for implementation status. Planned features are not represented as completed functionality.
+
+## Engineering principles
+
+1. Build tested vertical slices before splitting into distributed services.
+2. Label live, mocked, and planned integrations honestly.
+3. Enforce authorization in the API, not only in the UI.
+4. Require human approval for risky production actions.
+5. Design for least privilege, auditability, and secure secret handling.
+6. Instrument services with logs, metrics, and traces.
+
+## Documentation
+
 - [Architecture](docs/ARCHITECTURE.md)
 - [Database design](docs/DATABASE.md)
 - [API conventions](docs/API.md)
 - [Security model](docs/SECURITY.md)
 - [Deployment strategy](docs/DEPLOYMENT.md)
 - [Roadmap](docs/ROADMAP.md)
-
-## Engineering principles
-
-1. Build a tested vertical slice before adding more services.
-2. Treat integrations as live, mocked, or planned—never blur the distinction.
-3. Require explicit authorization and human approval for risky production actions.
-4. Design for least privilege, auditability, and secure secret handling.
-5. Measure reliability with observable, actionable signals.
-6. Document operational trade-offs and failure modes.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md). Issues and pull requests are welcome.
+- [Contributing](CONTRIBUTING.md)
 
 ## License
 

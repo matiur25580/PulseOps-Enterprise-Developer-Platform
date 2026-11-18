@@ -11,13 +11,27 @@ permissions:
 
 jobs:
   repository-integrity:
-    name: Repository integrity
+    name: Build and schema validation
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check required project documents
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Validate required project files
         shell: bash
         run: |
           set -euo pipefail
@@ -32,10 +46,21 @@ jobs:
             docs/ROADMAP.md
             docker-compose.yml
             .env.example
+            apps/api/prisma/schema.prisma
+            apps/api/src/main.ts
+            apps/web/src/app/page.tsx
           )
           for file in "${required_files[@]}"; do
             test -s "$file" || { echo "Missing or empty: $file"; exit 1; }
           done
+
+      - name: Validate Prisma schema
+        run: pnpm --filter @pulseops/api prisma:validate
+        env:
+          DATABASE_URL: postgresql://pulseops:local-only@localhost:5432/pulseops?schema=public
+
+      - name: Build applications
+        run: pnpm build
 
       - name: Check whitespace errors
         run: git diff --check
