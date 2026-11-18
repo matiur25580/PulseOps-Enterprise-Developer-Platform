@@ -73,7 +73,7 @@ All endpoints require authentication and are scoped to the caller's workspace.
 The API calculates measured SLI percentage and remaining error-budget percentage from samples in the configured rolling window. A no-sample objective reports null measurement values. The current data source is MANUAL_API_INGESTION; no production request telemetry is automatically attributed to a service yet.
 
 ## Metrics and request telemetry
-- GET /metrics: Prometheus text exposition for per-process HTTP request counters and latency histogram buckets. Set METRICS_TOKEN to require Authorization: Bearer <token>; if unset, the scrape endpoint is unauthenticated and should be restricted at the network/monitoring layer.
+- GET /metrics: Prometheus text exposition for per-process HTTP request counters and latency histogram buckets. METRICS_TOKEN is required at production startup and the endpoint requires Authorization: Bearer <token>. In local development, if unset, the scrape endpoint is unauthenticated.
 - HTTP responses include x-trace-id. Incoming valid W3C traceparent trace IDs are propagated; otherwise a new trace ID is generated. Structured JSON request events are written to stdout.
 
 Metrics are held in process memory and reset on restart; they are not a durable or horizontally aggregated time series. An OTLP/OpenTelemetry collector, external metrics backend, alerting and service-level telemetry adapters are future integration work.
