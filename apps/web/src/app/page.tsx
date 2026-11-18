@@ -532,7 +532,7 @@ export default function Home() {
               <label>Password<input required type="password" minLength={12} maxLength={72} value={authForm.password} onChange={event => setAuthForm({ ...authForm, password: event.target.value })} placeholder="At least 12 characters" /></label>
               {mode === 'register'
                 ? <label>Workspace name<input required minLength={2} maxLength={100} value={authForm.tenantName} onChange={event => setAuthForm({ ...authForm, tenantName: event.target.value })} placeholder="Platform Engineering" /></label>
-                : <label>Workspace slug<input required value={authForm.tenantSlug} onChange={event => setAuthForm({ ...authForm, tenantSlug: event.target.value })} placeholder="platform-engineering-a1b2c3d4" /></label>}
+                : <label>Workspace name or slug<input required value={authForm.tenantSlug} onChange={event => setAuthForm({ ...authForm, tenantSlug: event.target.value })} placeholder="Engineering or engineering-a1b2c3d4" /></label>}
               <button className="primary-button" disabled={busy}>{busy ? 'Please wait…' : mode === 'register' ? 'Create workspace →' : 'Sign in →'}</button>
             </form>
             <p className="fine-print">Access tokens expire after 15 minutes and renew automatically. Refreshing the page restores your session when the secure refresh cookie is available.</p>
