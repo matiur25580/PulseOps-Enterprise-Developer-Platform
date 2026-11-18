@@ -1,12 +1,13 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
 
 @Injectable()
 export class ServicesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
 
   list(tenantId: string) {
     return this.prisma.service.findMany({
@@ -15,31 +16,36 @@ export class ServicesService {
     });
   }
 
-  async create(tenantId: string, input: CreateServiceDto) {
+  async create(tenantId: string, actorId: string, input: CreateServiceDto) {
     await this.assertTeamBelongsToTenant(input.teamId, tenantId);
     try {
-      return await this.prisma.service.create({
+      const service = await this.prisma.service.create({
         data: { tenantId, name: input.name.trim(), slug: input.slug.trim().toLowerCase(), description: input.description, repository: input.repository, lifecycle: input.lifecycle, teamId: input.teamId },
       });
+      await this.audit.record({ tenantId, actorId, action: 'SERVICE_CREATED', entityType: 'SERVICE', entityId: service.id });
+      return service;
     } catch (error) { this.handleWriteError(error); }
   }
 
-  async update(tenantId: string, id: string, input: UpdateServiceDto) {
+  async update(tenantId: string, actorId: string, id: string, input: UpdateServiceDto) {
     await this.assertTeamBelongsToTenant(input.teamId, tenantId);
     const existing = await this.prisma.service.findFirst({ where: { id, tenantId }, select: { id: true } });
     if (!existing) throw new NotFoundException('Service not found');
     try {
-      return await this.prisma.service.update({
+      const service = await this.prisma.service.update({
         where: { id },
         data: { ...input, name: input.name?.trim(), slug: input.slug?.trim().toLowerCase() },
       });
+      await this.audit.record({ tenantId, actorId, action: 'SERVICE_UPDATED', entityType: 'SERVICE', entityId: id });
+      return service;
     } catch (error) { this.handleWriteError(error); }
   }
 
-  async remove(tenantId: string, id: string) {
+  async remove(tenantId: string, actorId: string, id: string) {
     const existing = await this.prisma.service.findFirst({ where: { id, tenantId }, select: { id: true } });
     if (!existing) throw new NotFoundException('Service not found');
     await this.prisma.service.delete({ where: { id } });
+    await this.audit.record({ tenantId, actorId, action: 'SERVICE_DELETED', entityType: 'SERVICE', entityId: id });
     return { deleted: true, id };
   }
 
