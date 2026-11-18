@@ -12,6 +12,8 @@ type Team = { id: string; name: string; email: string | null; createdAt: string;
 type Member = { id: string; role: 'ADMIN' | 'MEMBER'; user: { id: string; name: string; email: string } };
 type Incident = { id: string; title: string; description: string | null; severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'; status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED'; assignedToUserId: string | null; assignee: { id: string; name: string; email: string } | null; events: { id: string; eventType: string; message: string; createdAt: string; actor: { name: string } | null }[]; createdAt: string; };
 type AuditLog = { id: string; action: string; entityType: string; entityId: string | null; createdAt: string; actor: { name: string; email: string } | null };
+type Dependency = { id: string; sourceService: { id: string; name: string }; targetService: { id: string; name: string } };
+type Slo = { id: string; name: string; indicator: 'AVAILABILITY' | 'LATENCY'; targetPercent: number; windowDays: number; latencyThresholdMs: number | null; service: { id: string; name: string }; measurement: { sampleCount: number; goodCount: number; sliPercent: number | null; errorBudgetRemainingPercent: number | null; dataSource: string } };
 type AuthPayload = {
   accessToken: string;
   user: { id: string; name: string; email: string };
@@ -45,6 +47,11 @@ export default function Home() {
   const [members, setMembers] = useState<Member[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [dependencies, setDependencies] = useState<Dependency[]>([]);
+  const [slos, setSlos] = useState<Slo[]>([]);
+  const [dependencyForm, setDependencyForm] = useState({ sourceServiceId: '', targetServiceId: '' });
+  const [sloForm, setSloForm] = useState({ serviceId: '', name: '', indicator: 'AVAILABILITY' as Slo['indicator'], targetPercent: '99.9', windowDays: '30', latencyThresholdMs: '300' });
+  const [sampleForm, setSampleForm] = useState({ sloId: '', success: true, latencyMs: '100' });
   const [incidentForm, setIncidentForm] = useState({ title: '', description: '', severity: 'MEDIUM' as Incident['severity'], assignedToUserId: '' });
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteToken, setInviteToken] = useState('');
@@ -58,13 +65,15 @@ export default function Home() {
   const [notice, setNotice] = useState('');
 
   async function refreshWorkspace(accessToken: string, role: AuthPayload['role']) {
-    const [serviceRows, teamRows, memberRows, incidentRows] = await Promise.all([
+    const [serviceRows, teamRows, memberRows, incidentRows, dependencyRows, sloRows] = await Promise.all([
       apiRequest<Service[]>('/services', accessToken),
       apiRequest<Team[]>('/teams', accessToken),
       apiRequest<Member[]>('/members', accessToken),
       apiRequest<Incident[]>('/incidents', accessToken),
+      apiRequest<Dependency[]>('/service-dependencies', accessToken),
+      apiRequest<Slo[]>('/slos', accessToken),
     ]);
-    setServices(serviceRows); setTeams(teamRows); setMembers(memberRows); setIncidents(incidentRows);
+    setServices(serviceRows); setTeams(teamRows); setMembers(memberRows); setIncidents(incidentRows); setDependencies(dependencyRows); setSlos(sloRows);
     if (role === 'ADMIN') setAuditLogs(await apiRequest<AuditLog[]>('/audit-logs?limit=30', accessToken));
   }
 
@@ -227,7 +236,7 @@ export default function Home() {
   }
 
   function signOut() {
-    setToken(''); setIdentity(null); setServices([]); setTeams([]); setMembers([]); setIncidents([]); setAuditLogs([]);
+    setToken(''); setIdentity(null); setServices([]); setTeams([]); setMembers([]); setIncidents([]); setAuditLogs([]); setDependencies([]); setSlos([]);
     setInviteToken(''); setEditingId(null); setEditingTeamId(null);
     setServiceForm(emptyService); setTeamForm(emptyTeam); setNotice('Signed out.');
   }
