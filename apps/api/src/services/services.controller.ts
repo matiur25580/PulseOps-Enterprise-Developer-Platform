@@ -11,7 +11,7 @@ import { ServicesService } from './services.service';
 export class ServicesController {
  constructor(private readonly services:ServicesService){}
  @Get() list(@CurrentUser() user:AuthenticatedUser){return this.services.list(user.tenantId)}
- @Post() @Roles('ADMIN') create(@CurrentUser() user:AuthenticatedUser,@Body() body:CreateServiceDto){return this.services.create(user.tenantId,body)}
- @Patch(':id') @Roles('ADMIN') update(@CurrentUser() user:AuthenticatedUser,@Param('id',ParseUUIDPipe) id:string,@Body() body:UpdateServiceDto){return this.services.update(user.tenantId,id,body)}
- @Delete(':id') @Roles('ADMIN') remove(@CurrentUser() user:AuthenticatedUser,@Param('id',ParseUUIDPipe) id:string){return this.services.remove(user.tenantId,id)}
+ @Post() @Roles('ADMIN') create(@CurrentUser() user:AuthenticatedUser,@Body() body:CreateServiceDto){return this.services.create(user.tenantId,user.sub,body)}
+ @Patch(':id') @Roles('ADMIN') update(@CurrentUser() user:AuthenticatedUser,@Param('id',ParseUUIDPipe) id:string,@Body() body:UpdateServiceDto){return this.services.update(user.tenantId,user.sub,id,body)}
+ @Delete(':id') @Roles('ADMIN') remove(@CurrentUser() user:AuthenticatedUser,@Param('id',ParseUUIDPipe) id:string){return this.services.remove(user.tenantId,user.sub,id)}
 }
