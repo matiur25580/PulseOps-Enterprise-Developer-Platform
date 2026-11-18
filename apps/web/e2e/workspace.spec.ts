@@ -75,7 +75,7 @@ test('workspace owner can manage services and members while invited members get 
   const updatedTeamRow = page.locator('.team-row').filter({ hasText: 'Browser Platform Team Updated' });
   page.once('dialog', dialog => dialog.accept());
   await updatedTeamRow.getByRole('button', { name: 'Delete' }).click();
-  await expect(page.getByText('No teams yet. Create a team to assign service ownership.')).toBeVisible();
+  await expect(page.getByText('No teams yet in this workspace.')).toBeVisible();
   await page.getByRole('button', { name: 'Sign out' }).click();
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.getByLabel('Email address').fill(email);
