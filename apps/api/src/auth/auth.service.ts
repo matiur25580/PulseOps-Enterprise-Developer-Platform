@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, TooManyRequestsException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma } from '@prisma/client';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
@@ -22,7 +22,7 @@ export class AuthService {
    "blocked_until"=CASE WHEN auth_rate_limit_buckets."blocked_until">NOW() THEN auth_rate_limit_buckets."blocked_until" WHEN auth_rate_limit_buckets."window_started_at"<=NOW()-(${windowSeconds}*INTERVAL '1 second') THEN NULL WHEN auth_rate_limit_buckets."request_count"+1>${limit} THEN NOW()+(${windowSeconds}*INTERVAL '1 second') ELSE NULL END
   `;
   const rows=await this.prisma.$queryRaw<Array<{blocked_until:Date|null}>>`SELECT "blocked_until" FROM auth_rate_limit_buckets WHERE "key"=${key}`;
-  if(rows[0]?.blocked_until&&rows[0].blocked_until>new Date())throw new TooManyRequestsException('Too many authentication attempts. Try again later.');
+  if(rows[0]?.blocked_until&&rows[0].blocked_until>new Date())throw new HttpException('Too many authentication attempts. Try again later.', HttpStatus.TOO_MANY_REQUESTS);
  }
  async register(input:RegisterDto){
   const email=input.email.trim().toLowerCase();
