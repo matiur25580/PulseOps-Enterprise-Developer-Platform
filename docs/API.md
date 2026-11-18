@@ -117,3 +117,23 @@ OTLP/HTTP export is optional:
 - `OTEL_TRACES_SAMPLER_ARG`: deterministic root sampling ratio, 0–1 (default 1).
 
 Unset both endpoint variables to disable remote trace export. Export is best-effort with a three-second timeout and never blocks or fails the API request. Outbound HTTP adapters can propagate the active context by injecting `TraceContextService` and calling `inject(existingHeaders)`. This milestone adds inbound HTTP spans; automatic Prisma/database spans and browser instrumentation are not yet implemented.
+
+
+## GitHub delivery integration and DORA metrics
+
+Repository connections are workspace-scoped. ADMIN users can:
+- `POST /integrations/github/repositories` with `{ "serviceId": "<service-uuid>", "repositoryFullName": "owner/repository" }` to connect a repository to a catalog service.
+- `GET /integrations/github/repositories` to list connected repositories.
+- `DELETE /integrations/github/repositories/:id` to disable ingestion without deleting historical metrics.
+
+Configure `GITHUB_WEBHOOK_SECRET` as a deployment secret, then create a GitHub repository webhook pointing to `/api/v1/integrations/github/webhook`, using that same secret and JSON content type. Subscribe to `pull_request` and `deployment_status` events. The API verifies GitHub's `X-Hub-Signature-256` HMAC against the exact raw request body using constant-time comparison. Missing secrets or invalid signatures are rejected. GitHub delivery IDs are persisted uniquely to make retries idempotent. Webhook events for unconnected repositories are acknowledged and ignored.
+
+Merged pull requests are stored from `pull_request` events with action `closed` and `merged=true`. Deployment records are upserted from terminal `deployment_status` states (`success`, `failure`, `error`, `inactive`).
+
+- `GET /engineering-metrics/dora?windowDays=30` returns workspace DORA indicators for a 7–90 day window.
+- Deployment frequency is successful deployments divided by window days (also returned per week).
+- Lead time is the median time from PR merge to successful deployment, matched by exact merge commit SHA.
+- Change failure rate is failed terminal GitHub deployment states (failure/error) divided by successful plus failed deployment records. Inactive deployments retain their original successful deployment timestamp and are not counted as failures. This is a webhook-derived proxy and not confirmed incident causality.
+- MTTR is the mean time from incident creation to resolution for workspace incidents resolved within the selected window.
+
+Metrics include sample sizes and limitations. Null means there is insufficient matching data; zero is not substituted for missing samples. This integration uses GitHub webhooks, not the GitHub App installation/OAuth flow or GitHub API polling. It does not automatically create GitHub webhooks; administrators configure them in GitHub.
