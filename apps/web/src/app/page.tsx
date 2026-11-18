@@ -500,7 +500,7 @@ export default function Home() {
 
   async function signOut() {
     try { await apiRequest('/auth/logout', undefined, { method: 'POST' }); } catch { /* local sign-out must still complete */ }
-    setToken(''); setIdentity(null); setServices([]); setTeams([]); setMembers([]); setIncidents([]); setAuditLogs([]); setDependencies([]); setSlos([]); setRunbookServiceId(''); setRunbooks([]); setEscalationPolicy(null); setCostSummary(null); setCostBudgets([]); setDoraMetrics(null);
+    setToken(''); setIdentity(null); setSessions([]); setServices([]); setTeams([]); setMembers([]); setIncidents([]); setAuditLogs([]); setDependencies([]); setSlos([]); setRunbookServiceId(''); setRunbooks([]); setEscalationPolicy(null); setCostSummary(null); setCostBudgets([]); setDoraMetrics(null);
     setInviteToken(''); setEditingId(null); setEditingTeamId(null);
     setServiceForm(emptyService); setTeamForm(emptyTeam); setNotice('Signed out.');
   }
