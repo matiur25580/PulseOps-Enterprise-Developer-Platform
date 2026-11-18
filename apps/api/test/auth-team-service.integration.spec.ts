@@ -51,6 +51,12 @@ describe('PostgreSQL auth → team → service workflow', () => {
 
     await request(app.getHttpServer()).get('/api/v1/teams').expect(401);
 
+    await request(app.getHttpServer())
+      .post('/api/v1/teams')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Injected Tenant Team', tenantId: '00000000-0000-4000-8000-000000000001' })
+      .expect(400);
+
     const team = await request(app.getHttpServer())
       .post('/api/v1/teams')
       .set('Authorization', `Bearer ${token}`)
@@ -67,9 +73,16 @@ describe('PostgreSQL auth → team → service workflow', () => {
     expect(service.body.tenantId).toBe(registered.body.tenant.id);
     expect(service.body.teamId).toBe(teamId);
 
+    const updatedTeam = await request(app.getHttpServer())
+      .patch(`/api/v1/teams/${teamId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Platform Reliability' })
+      .expect(200);
+    expect(updatedTeam.body.name).toBe('Platform Reliability');
+
     const persisted = await prisma.service.findUnique({ where: { id: serviceId }, include: { team: true } });
     expect(persisted?.name).toBe('Payments API');
-    expect(persisted?.team?.name).toBe('Platform Engineering');
+    expect(persisted?.team?.name).toBe('Platform Reliability');
 
     const listed = await request(app.getHttpServer())
       .get('/api/v1/services')
@@ -113,5 +126,12 @@ describe('PostgreSQL auth → team → service workflow', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
     expect(teams.body.some((item: { id: string }) => item.id === teamId)).toBe(true);
+
+    await request(app.getHttpServer())
+      .delete(`/api/v1/teams/${teamId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    const orphanSafeService = await prisma.service.findUnique({ where: { id: serviceId } });
+    expect(orphanSafeService?.teamId).toBeNull();
   });
 });
