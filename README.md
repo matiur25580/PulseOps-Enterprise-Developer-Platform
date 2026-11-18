@@ -42,7 +42,7 @@ The readiness endpoint checks PostgreSQL and returns HTTP 503 if the database is
 
 ## Automated quality gates
 
-The `Quality Gates` GitHub Actions workflow provisions PostgreSQL 16, generates Prisma Client, applies the schema to an isolated CI database, runs API unit and PostgreSQL integration tests, builds both applications, and executes Playwright Chromium tests against the running API and web UI. The browser suite covers workspace registration/sign-in and Service Catalog create/edit/delete. It does not claim coverage for the Team UI because Team Management currently exists as an API, not a frontend screen.
+The `Quality Gates` GitHub Actions workflow provisions PostgreSQL 16, generates Prisma Client, applies the schema to an isolated CI database, runs API unit and PostgreSQL integration tests, builds both applications, and executes Playwright Chromium tests against the running API and web UI. The browser suite covers workspace registration/sign-in, Team Management create/edit/delete, service ownership assignment, and Service Catalog create/edit/delete. Team and Service operations use the authenticated workspace-scoped API.
 
 Integration tests use a dedicated Jest configuration and are intentionally excluded from the fast unit-test command.
 
