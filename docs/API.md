@@ -33,3 +33,13 @@ Team names are unique per workspace. Duplicate names return 409; resources outsi
 
 ## Security notes
 JWTs expire after one hour. Passwords are hashed with bcryptjs (cost factor 12). Production startup requires `JWT_SECRET`. Refresh tokens, email verification, login rate limiting, password reset, and audit events remain outstanding.
+
+## Workspace members and RBAC
+- `GET /members`: list members in the authenticated workspace (ADMIN and MEMBER).
+- `POST /members/invitations`: ADMIN only. Body: `{ "email": "new.member@example.com" }`. Creates a seven-day MEMBER invitation and returns a one-time `acceptanceToken`. Until an email provider is configured, an administrator must share this token through a secure channel; the API does not send email.
+- `DELETE /members/invitations/:id`: ADMIN only; revoke a pending invitation.
+- `PATCH /members/:userId/role`: ADMIN only. Body: `{ "role": "ADMIN" | "MEMBER" }`.
+- `DELETE /members/:userId`: ADMIN only; remove a member from this workspace.
+- `POST /auth/accept-invitation`: public invitation acceptance. Body: `{ "name": "New Member", "email": "new.member@example.com", "password": "at-least-12-characters", "token": "<one-time-token>" }`. New accounts are created; existing accounts must provide their current password. The token is single-use and expires after seven days.
+
+ADMIN members can create, update, and delete Teams and Services. MEMBER accounts can read Teams, Services, and the member directory, but write operations return 403. Role changes and membership removal take effect immediately for existing JWTs because the API reloads membership and role from PostgreSQL on every authenticated request. A workspace cannot demote or remove its last ADMIN.
