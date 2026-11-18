@@ -112,9 +112,9 @@ test('workspace owner can manage services and members while invited members get 
   await page.getByRole('button', { name: 'Evaluate thresholds' }).click();
   await expect(page.getByText(/1 threshold\(s\) reached/)).toBeVisible();
 
-  await page.getByLabel('SERVICE').selectOption({ label: 'Browser Payments API Updated' });
+  await page.locator('.operations-panel').getByLabel('SERVICE').selectOption({ label: 'Browser Payments API Updated' });
   await page.getByLabel('Reference title').fill('Payments recovery runbook');
-  await page.getByLabel('URL').fill('https://docs.example.com/payments/recovery');
+  await page.locator('.runbook-form').getByLabel('URL').fill('https://docs.example.com/payments/recovery');
   await page.getByLabel('Category').selectOption('RUNBOOK');
   await page.getByLabel('Set as primary').check();
   await page.getByRole('button', { name: 'Add reference' }).click();
