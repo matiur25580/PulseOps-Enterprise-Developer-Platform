@@ -77,7 +77,7 @@ test('workspace owner can manage services and members while invited members get 
   await page.getByLabel('SLO name').fill('Browser API availability');
   await page.getByRole('button', { name: 'Create SLO' }).click();
   await expect(page.locator('.slo-card')).toContainText('Browser API availability');
-  await page.getByLabel('SLO').selectOption({ label: 'Browser API availability' });
+  await page.locator('.sample-form').getByLabel('SLO').selectOption({ label: 'Browser API availability' });
   await page.getByLabel('Outcome').selectOption('true');
   await page.getByRole('button', { name: 'Record SLI sample' }).click();
   await expect(page.locator('.slo-card')).toContainText('100.000%');
