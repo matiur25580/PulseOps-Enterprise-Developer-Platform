@@ -29,6 +29,8 @@ model Tenant {
   services    Service[]
   memberships TenantMembership[]
   invitations WorkspaceInvitation[]
+  auditLogs   AuditLog[]
+  incidents   Incident[]
 
   @@map("tenants")
 }
@@ -41,6 +43,9 @@ model User {
   createdAt    DateTime           @default(now()) @map("created_at")
   updatedAt    DateTime           @updatedAt @map("updated_at")
   memberships  TenantMembership[]
+  auditLogs     AuditLog[]       @relation("AuditActor")
+  assignedIncidents Incident[]   @relation("IncidentAssignee")
+  incidentEvents IncidentEvent[] @relation("IncidentEventActor")
 
   @@map("users")
 }
@@ -110,4 +115,71 @@ model Service {
   @@index([tenantId, lifecycle])
   @@index([teamId])
   @@map("services")
+}
+
+enum IncidentSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum IncidentStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id") @db.Uuid
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, entityType, entityId])
+  @@map("audit_logs")
+}
+
+model Incident {
+  id                String           @id @default(uuid()) @db.Uuid
+  tenantId          String           @map("tenant_id") @db.Uuid
+  title             String
+  description       String?
+  severity          IncidentSeverity @default(MEDIUM)
+  status            IncidentStatus   @default(OPEN)
+  assignedToUserId  String?          @map("assigned_to_user_id") @db.Uuid
+  createdByUserId   String           @map("created_by_user_id") @db.Uuid
+  acknowledgedAt    DateTime?        @map("acknowledged_at")
+  resolvedAt        DateTime?        @map("resolved_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignee          User?            @relation("IncidentAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  events            IncidentEvent[]
+
+  @@index([tenantId, status, severity])
+  @@index([assignedToUserId])
+  @@map("incidents")
+}
+
+model IncidentEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  incidentId  String   @map("incident_id") @db.Uuid
+  actorId     String?  @map("actor_id") @db.Uuid
+  eventType   String   @map("event_type")
+  message     String
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  incident    Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  actor       User?    @relation("IncidentEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([incidentId, createdAt])
+  @@map("incident_events")
 }
