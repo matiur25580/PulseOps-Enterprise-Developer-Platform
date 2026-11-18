@@ -26,6 +26,7 @@ CREATE TABLE "escalation_policies" (
   "updated_at" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "escalation_policies_pkey" PRIMARY KEY ("id")
 );
+CREATE UNIQUE INDEX "runbook_references_one_primary_per_service_idx" ON "runbook_references"("service_id") WHERE "is_primary" = true;
 CREATE UNIQUE INDEX "runbook_references_service_id_title_key" ON "runbook_references"("service_id", "title");
 CREATE INDEX "runbook_references_tenant_id_service_id_idx" ON "runbook_references"("tenant_id", "service_id");
 CREATE UNIQUE INDEX "escalation_policies_tenant_id_service_id_key" ON "escalation_policies"("tenant_id", "service_id");
