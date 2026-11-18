@@ -23,9 +23,9 @@ Roadmap items are targets, not completed features. Each phase should produce a d
 ## Phase 2 — Operational workflows
 - [x] Service ownership assignment in the workspace UI.
 - [ ] Service dependency graph.
-- [ ] Incident lifecycle and append-only timeline.
+- [x] Tenant-scoped incident lifecycle (create, assign, acknowledge, resolve) with append-only timeline events.
 - [ ] Runbook references and escalation metadata.
-- [ ] Audit events for privileged operations.
+- [x] Append-only audit events for privileged workspace operations and incident lifecycle, with ADMIN-only audit viewer.
 
 ## Phase 3 — Observability and SRE
 - [ ] OpenTelemetry instrumentation.
