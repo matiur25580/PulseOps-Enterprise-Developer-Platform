@@ -62,6 +62,26 @@ test('workspace owner can manage services and members while invited members get 
   await page.getByRole('button', { name: /Save changes/ }).click();
   await expect(page.getByRole('heading', { name: 'Browser Payments API Updated' })).toBeVisible();
 
+  await page.getByLabel('Service name').fill('Browser Notifications API');
+  await page.getByLabel('Slug').fill(`browser-notifications-${suffix}`);
+  await page.getByRole('button', { name: /Register service/ }).click();
+  await expect(page.getByRole('heading', { name: 'Browser Notifications API' })).toBeVisible();
+
+  await page.getByLabel('Upstream service').selectOption({ label: 'Browser Payments API Updated' });
+  await page.getByLabel('Downstream service').selectOption({ label: 'Browser Notifications API' });
+  await page.getByRole('button', { name: 'Add edge' }).click();
+  await expect(page.locator('.dependency-edge')).toContainText('Browser Payments API Updated');
+  await expect(page.locator('.dependency-edge')).toContainText('Browser Notifications API');
+
+  await page.locator('.slo-form').getByLabel('Service').selectOption({ label: 'Browser Payments API Updated' });
+  await page.getByLabel('SLO name').fill('Browser API availability');
+  await page.getByRole('button', { name: 'Create SLO' }).click();
+  await expect(page.locator('.slo-card')).toContainText('Browser API availability');
+  await page.getByLabel('SLO').selectOption({ label: 'Browser API availability' });
+  await page.getByLabel('Outcome').selectOption('true');
+  await page.getByRole('button', { name: 'Record SLI sample' }).click();
+  await expect(page.locator('.slo-card')).toContainText('100.000%');
+
   await page.getByLabel('Incident title').fill('Browser API latency');
   await page.getByLabel('Incident description').fill('Latency increased after a deployment');
   await page.getByLabel('Severity').selectOption('HIGH');
@@ -78,6 +98,9 @@ test('workspace owner can manage services and members while invited members get 
   const updatedRow = page.locator('.service-row').filter({ has: page.getByRole('heading', { name: 'Browser Payments API Updated' }) });
   page.once('dialog', dialog => dialog.accept());
   await updatedRow.getByRole('button', { name: 'Delete' }).click();
+  const notificationsRow = page.locator('.service-row').filter({ has: page.getByRole('heading', { name: 'Browser Notifications API' }) });
+  page.once('dialog', dialog => dialog.accept());
+  await notificationsRow.getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByText('No services yet')).toBeVisible();
 
   const teamRow = page.locator('.team-row').filter({ hasText: 'Browser Platform Team' });
