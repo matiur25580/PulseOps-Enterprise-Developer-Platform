@@ -4,7 +4,7 @@
 
 PulseOps brings service ownership, operational signals, incident workflows, reliability objectives, and cloud-cost visibility into one engineering workspace.
 
-> **Project status:** The repository includes a Next.js portal, NestJS API, PostgreSQL/Prisma schema, JWT authentication, tenant-scoped Service Catalog and Team Management, workspace member invitations, ADMIN/MEMBER RBAC, incident lifecycle management, append-only audit events, and GitHub Actions quality gates for API unit tests, PostgreSQL integration tests, and Playwright browser tests. Production hardening (managed secrets, invitation email delivery, email verification, rate limiting, refresh-token/session management, and security headers) remains outstanding.
+> **Project status:** The repository includes a Next.js portal, NestJS API, PostgreSQL/Prisma schema, JWT authentication, tenant-scoped Service Catalog and Team Management, workspace member invitations, ADMIN/MEMBER RBAC, incident lifecycle management, append-only audit events, service dependency graph, SLI/SLO and error budgets, Prometheus-compatible process metrics, and GitHub Actions quality gates for API unit tests, PostgreSQL integration tests, and Playwright browser tests. Production hardening (managed secrets, invitation email delivery, email verification, rate limiting, refresh-token/session management, and security headers) remains outstanding.
 
 ## Current stack
 - **Web:** Next.js 15, React 19, TypeScript
@@ -46,7 +46,7 @@ The readiness endpoint checks PostgreSQL and returns HTTP 503 if the database is
 
 ## Automated quality gates
 
-The `Quality Gates` GitHub Actions workflow provisions PostgreSQL 16, generates Prisma Client, applies the schema to an isolated CI database, runs API unit and PostgreSQL integration tests, builds both applications, and executes Playwright Chromium tests against the running API and web UI. The browser suite covers workspace registration/sign-in, Team Management CRUD, service ownership assignment, workspace invitations, member read-only access, Service Catalog CRUD, incident acknowledgement/resolution, and the ADMIN audit viewer. Team and Service operations use the authenticated workspace-scoped API.
+The `Quality Gates` GitHub Actions workflow provisions PostgreSQL 16, generates Prisma Client, applies the schema to an isolated CI database, runs API unit and PostgreSQL integration tests, builds both applications, and executes Playwright Chromium tests against the running API and web UI. The browser suite covers workspace registration/sign-in, Team Management CRUD, service ownership assignment, workspace invitations, member read-only access, Service Catalog CRUD, incident acknowledgement/resolution, dependency graph creation, SLO creation and sample recording, and the ADMIN audit viewer. Team and Service operations use the authenticated workspace-scoped API.
 
 Integration tests use a dedicated Jest configuration and are intentionally excluded from the fast unit-test command.
 
