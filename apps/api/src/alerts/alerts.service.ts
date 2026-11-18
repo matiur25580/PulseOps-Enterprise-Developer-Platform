@@ -74,6 +74,16 @@ export class AlertsService {
         });
         await tx.alertEvent.create({ data: { ruleId: rule.id, incidentId: incident.id, observedPercent, thresholdPercent: rule.thresholdPercent, message } });
         await tx.auditLog.create({ data: { tenantId, actorId, action: 'SLO_ALERT_TRIGGERED', entityType: 'INCIDENT', entityId: incident.id, metadata: { alertRuleId: rule.id, observedPercent, thresholdPercent: rule.thresholdPercent } } });
+        await tx.outboxEvent.create({
+          data: {
+            eventType: 'SLO_ALERT_TRIGGERED',
+            aggregateType: 'INCIDENT',
+            aggregateId: incident.id,
+            tenantId,
+            idempotencyKey: `slo-alert:${rule.id}:${incident.id}`,
+            payload: { alertRuleId: rule.id, incidentId: incident.id, observedPercent, thresholdPercent: rule.thresholdPercent },
+          },
+        });
         return incident;
       });
       if (!created) { outcomes.push({ ruleId: rule.id, state: 'COOLDOWN', observedPercent }); continue; }
