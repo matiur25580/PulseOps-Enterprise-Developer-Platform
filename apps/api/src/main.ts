@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { HttpObservabilityInterceptor } from './observability/http-observability.interceptor';
+import { securityHeadersMiddleware } from './security/security-headers.middleware';
 
 async function bootstrap(): Promise<void> {
   if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
@@ -16,6 +17,8 @@ async function bootstrap(): Promise<void> {
     throw new Error('WEB_ORIGIN is required in production; configure the deployed frontend origin');
   }
   const app = await NestFactory.create(AppModule, { rawBody: true });
+  app.getHttpAdapter().getInstance().disable('x-powered-by');
+  app.use(securityHeadersMiddleware);
   app.enableCors({ origin: process.env.WEB_ORIGIN ?? 'http://localhost:3000', credentials: true });
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
