@@ -49,6 +49,12 @@ PulseOps handles operational metadata and potentially sensitive infrastructure c
 - Request logs contain route/method/status/duration and trace ID only; authorization headers and request bodies are not logged.
 - Incident state transitions append timeline events. Audit records capture Team/Service mutations, invitation and membership administration, and incident lifecycle actions; the API exposes no audit mutation or deletion route. Audit viewing is ADMIN-only.
 
+## JWT token validation
+- Tokens are signed with the configured `JWT_SECRET` and include the fixed `pulseops-api` issuer and `pulseops-web` audience.
+- Verification enforces both issuer and audience; tokens minted for another issuer or client are rejected.
+- Production requires a unique `JWT_SECRET` of at least 32 characters. The known development fallback is available only outside production.
+- Generate a production secret locally with `openssl rand -base64 48` and store it only in the hosting provider's secret manager. Never commit it or paste it into chat.
+
 ## Remaining production hardening
 Invitation email delivery, email verification, refresh-token rotation/revocation, login/register rate limiting, password reset, managed secrets, security headers, and external security review remain outstanding. Treat this as an application foundation, not a production security certification.
 
