@@ -159,7 +159,7 @@ test('workspace owner can manage services and members while invited members get 
   page.once('dialog', dialog => dialog.accept());
   await updatedTeamRow.getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByText('No teams yet in this workspace.')).toBeVisible();
-  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('Password').fill(password);
