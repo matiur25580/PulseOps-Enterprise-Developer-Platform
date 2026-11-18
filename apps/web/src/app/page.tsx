@@ -352,7 +352,7 @@ export default function Home() {
           <form className="team-form" onSubmit={createIncident}>
             <h3>Report an incident</h3>
             <label>Incident title<input required minLength={3} maxLength={160} value={incidentForm.title} onChange={event => setIncidentForm({ ...incidentForm, title: event.target.value })} placeholder="Elevated API latency" /></label>
-            <label>Description<textarea maxLength={5000} rows={2} value={incidentForm.description} onChange={event => setIncidentForm({ ...incidentForm, description: event.target.value })} placeholder="Impact, symptoms and context" /></label>
+            <label>Incident description<textarea maxLength={5000} rows={2} value={incidentForm.description} onChange={event => setIncidentForm({ ...incidentForm, description: event.target.value })} placeholder="Impact, symptoms and context" /></label>
             <label>Severity<select value={incidentForm.severity} onChange={event => setIncidentForm({ ...incidentForm, severity: event.target.value as Incident['severity'] })}><option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option></select></label>
             <label>Assign to<select value={incidentForm.assignedToUserId} onChange={event => setIncidentForm({ ...incidentForm, assignedToUserId: event.target.value })}><option value="">Unassigned</option>{members.map(member => <option key={member.user.id} value={member.user.id}>{member.user.name}</option>)}</select></label>
             <button className="primary-button" disabled={busy}>Create incident →</button>
