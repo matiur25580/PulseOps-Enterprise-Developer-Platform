@@ -55,6 +55,16 @@ describe('Authentication session lifecycle', () => {
     expect(active).toHaveLength(0);
   });
 
+  it('allows login with the workspace display name as well as its generated slug', async () => {
+    const workspaceName = `Engineering ${suffix}`;
+    const registered = await request(app.getHttpServer()).post('/api/v1/auth/register')
+      .send({ name: 'Workspace Name Login', email, password, tenantName: workspaceName }).expect(201);
+    await request(app.getHttpServer()).post('/api/v1/auth/login')
+      .send({ email, password, tenantSlug: workspaceName }).expect(201);
+    await request(app.getHttpServer()).post('/api/v1/auth/login')
+      .send({ email, password, tenantSlug: registered.body.tenant.slug }).expect(201);
+  });
+
   it('rate-limits repeated login attempts for the same IP and account', async () => {
     const throttleEmail = `throttle-${suffix}@pulseops.test`;
     const registered = await request(app.getHttpServer()).post('/api/v1/auth/register')
