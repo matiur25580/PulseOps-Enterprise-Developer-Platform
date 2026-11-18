@@ -4,6 +4,7 @@ import { AuthenticatedUser, JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AssignIncidentDto } from './dto/assign-incident.dto';
 import { CreateIncidentDto } from './dto/create-incident.dto';
+import { ResolveIncidentDto } from './dto/resolve-incident.dto';
 import { IncidentsService } from './incidents.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -14,5 +15,5 @@ export class IncidentsController {
   @Post() create(@CurrentUser() user: AuthenticatedUser, @Body() body: CreateIncidentDto) { return this.incidents.create(user.tenantId, user.sub, body); }
   @Patch(':id/assign') assign(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string, @Body() body: AssignIncidentDto) { return this.incidents.assign(user.tenantId, user.sub, id, body); }
   @Post(':id/acknowledge') acknowledge(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) { return this.incidents.acknowledge(user.tenantId, user.sub, id); }
-  @Post(':id/resolve') resolve(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string, @Body() body: { message?: string }) { return this.incidents.resolve(user.tenantId, user.sub, id, body?.message); }
+  @Post(':id/resolve') resolve(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string, @Body() body: ResolveIncidentDto) { return this.incidents.resolve(user.tenantId, user.sub, id, body?.message); }
 }
