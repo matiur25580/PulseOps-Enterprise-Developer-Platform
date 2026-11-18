@@ -12,7 +12,7 @@ export class MembersController {
  constructor(private readonly members:MembersService){}
  @Get() list(@CurrentUser() user:AuthenticatedUser){return this.members.list(user.tenantId)}
  @Post('invitations') @Roles('ADMIN') invite(@CurrentUser() user:AuthenticatedUser,@Body() body:CreateInvitationDto){return this.members.createInvitation(user.tenantId,user.sub,body)}
- @Delete('invitations/:id') @Roles('ADMIN') revoke(@CurrentUser() user:AuthenticatedUser,@Param('id',ParseUUIDPipe) id:string){return this.members.revokeInvitation(user.tenantId,id)}
+ @Delete('invitations/:id') @Roles('ADMIN') revoke(@CurrentUser() user:AuthenticatedUser,@Param('id',ParseUUIDPipe) id:string){return this.members.revokeInvitation(user.tenantId,user.sub,id)}
  @Patch(':userId/role') @Roles('ADMIN') updateRole(@CurrentUser() user:AuthenticatedUser,@Param('userId',ParseUUIDPipe) userId:string,@Body() body:UpdateMemberRoleDto){return this.members.updateRole(user.tenantId,user.sub,userId,body)}
  @Delete(':userId') @Roles('ADMIN') remove(@CurrentUser() user:AuthenticatedUser,@Param('userId',ParseUUIDPipe) userId:string){return this.members.removeMember(user.tenantId,user.sub,userId)}
 }
