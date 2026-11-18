@@ -59,13 +59,12 @@ PulseOps handles operational metadata and potentially sensitive infrastructure c
 - Access JWTs expire after 15 minutes and include a session ID; each protected request revalidates workspace membership and an active, unexpired session in PostgreSQL.
 - Refresh credentials are random opaque tokens; only SHA-256 hashes are stored. The raw token is issued as an HttpOnly cookie scoped to `/api/v1/auth`.
 - Refresh rotates tokens transactionally. Reuse of a rotated token revokes its token family. Logout, logout-all, session inventory, and per-session revocation are supported.
-- Register, login, and refresh use database-backed fixed-window rate limits shared across API instances. Login additionally enforces a per-IP ceiling (30 attempts per 15 minutes) alongside the stricter per-IP-and-account ceiling (10 attempts per 15 minutes), limiting password spraying across many email addresses.
+- Register, login, and refresh use database-backed fixed-window rate limits shared across API instances. Registration is limited to 20 attempts per IP per hour and five attempts per normalized email per hour, preventing distributed attempts against a single address. Login additionally enforces a per-IP ceiling (30 attempts per 15 minutes) alongside the stricter per-IP-and-account ceiling (10 attempts per 15 minutes), limiting password spraying across many email addresses.
 - Production cookies use Secure, HttpOnly, SameSite=None. Default Vercel and Render hostnames are cross-site and browser privacy settings may block third-party cookies; a same-site custom domain or first-party auth proxy is recommended.
 - Existing access tokens without a session ID must be replaced by signing in again after deployment.
 
 ## Remaining production hardening
-Invitation email delivery, email verification, password reset, managed secrets, and external security review remain outstanding. Treat this as an application foundation, not a production security certification.
-
+Invitation email delivery, email verification, password reset, managed secrets, and external security review remain outstanding. Abuse telemetry and expanded security event history are also pending. Treat this as an application foundation, not a production security certification.
 
 ## GitHub webhook security
 - The webhook receiver accepts events only when `GITHUB_WEBHOOK_SECRET` is configured and the `X-Hub-Signature-256` HMAC matches the exact raw request body.
@@ -76,13 +75,11 @@ Invitation email delivery, email verification, password reset, managed secrets, 
 - Repository-to-service mappings are tenant-scoped; the repository name is globally unique in PulseOps to avoid ambiguous webhook routing across workspaces.
 - GitHub webhook configuration is manual. GitHub App installation/OAuth and automatic webhook provisioning are not implemented.
 
-
 ## Runbook and escalation controls
 - Runbook references and escalation policies are scoped by tenant and service; cross-workspace service IDs return not found.
 - Only ADMIN members can create/delete runbooks or change escalation policies. Read access requires authenticated workspace membership.
 - Incident escalation uses a compare-and-set level transition and commits the timeline and audit records in the same serializable transaction.
 - Escalation currently records the selected contact in event metadata; no external notification is sent and no automatic timer is running.
-
 
 ## FinOps data controls
 - Cost imports are ADMIN-only, bounded to 500 records per request, validated for currency, decimal precision, billing month and tenant-owned service allocation.
