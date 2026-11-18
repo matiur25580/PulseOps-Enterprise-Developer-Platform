@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('workspace owner can manage services and members while invited members get read-only access', async ({ page }) => {
+test('workspace owner can manage services and members while invited members get read-only access', async ({ page, browser }) => {
   const suffix = `${Date.now()}`;
   const email = `browser-${suffix}@pulseops.test`;
   const password = 'Browser-Test-Password-2026!';
@@ -28,7 +28,8 @@ test('workspace owner can manage services and members while invited members get 
   const acceptanceToken = await page.locator('.invite-token code').innerText();
   expect(acceptanceToken).toHaveLength(64);
 
-  const memberPage = await page.context().newPage();
+  const memberContext = await browser.newContext();
+  const memberPage = await memberContext.newPage();
   await memberPage.goto('/accept-invitation');
   await memberPage.getByLabel('Your name').fill('Browser Invited Member');
   await memberPage.getByLabel('Invited email').fill(memberEmail);
@@ -37,11 +38,7 @@ test('workspace owner can manage services and members while invited members get 
   await memberPage.getByRole('button', { name: /Accept invitation/ }).click();
   await expect(memberPage.getByRole('heading', { name: /You're in/ })).toBeVisible();
   await memberPage.getByRole('link', { name: /Continue to sign in/ }).click();
-  await memberPage.getByRole('button', { name: 'Sign in' }).click();
-  await memberPage.getByLabel('Email address').fill(memberEmail);
-  await memberPage.getByLabel('Password').fill('Member-Browser-Password-2026!');
-  await memberPage.getByLabel('Workspace slug').fill(tenantSlug);
-  await memberPage.getByRole('button', { name: /Sign in/ }).last().click();
+  // Accepting an invitation establishes a refresh-cookie session; the home page restores it automatically.
   await expect(memberPage.getByRole('heading', { name: 'Workspace members' })).toBeVisible();
   await expect(memberPage.getByRole('heading', { name: 'Delivery & FinOps' })).toBeVisible();
   await expect(memberPage.getByRole('button', { name: 'Create budget' })).toHaveCount(0);
@@ -50,6 +47,7 @@ test('workspace owner can manage services and members while invited members get 
   await expect(memberPage.getByRole('button', { name: /Register service/ })).toHaveCount(0);
   await expect(memberPage.getByRole('button', { name: /Create invitation/ })).toHaveCount(0);
   await memberPage.close();
+  await memberContext.close();
 
   await page.getByLabel('Service name').fill('Browser Payments API');
   await page.getByLabel('Owning team').selectOption({ label: 'Browser Platform Team' });
