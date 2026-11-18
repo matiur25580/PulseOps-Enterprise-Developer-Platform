@@ -112,6 +112,9 @@ model Service {
   updatedAt   DateTime         @updatedAt @map("updated_at")
   tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   team        Team?            @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  dependenciesFrom ServiceDependency[] @relation("DependencySource")
+  dependenciesTo ServiceDependency[] @relation("DependencyTarget")
+  sloDefinitions SloDefinition[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, lifecycle])
