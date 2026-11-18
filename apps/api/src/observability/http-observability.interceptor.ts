@@ -64,6 +64,7 @@ export class HttpObservabilityInterceptor implements NestInterceptor {
           startTimeUnixNano,
           endTimeUnixNano: (BigInt(Date.now()) * 1_000_000n).toString(),
           statusCode: status,
+          traceFlags,
           attributes: [
             { key: 'http.request.method', value: { stringValue: request.method } },
             { key: 'http.route', value: { stringValue: route } },
