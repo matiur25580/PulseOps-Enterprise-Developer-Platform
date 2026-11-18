@@ -10,10 +10,12 @@ type Service = {
 };
 type Team = { id: string; name: string; email: string | null; createdAt: string; updatedAt: string };
 type Member = { id: string; role: 'ADMIN' | 'MEMBER'; user: { id: string; name: string; email: string } };
-type Incident = { id: string; title: string; description: string | null; severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'; status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED'; assignedToUserId: string | null; assignee: { id: string; name: string; email: string } | null; events: { id: string; eventType: string; message: string; createdAt: string; actor: { name: string } | null }[]; createdAt: string; };
+type Incident = { id: string; title: string; description: string | null; serviceId?: string | null; service?: { id: string; name: string } | null; escalationLevel?: number; severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'; status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED'; assignedToUserId: string | null; assignee: { id: string; name: string; email: string } | null; events: { id: string; eventType: string; message: string; createdAt: string; actor: { name: string } | null }[]; createdAt: string; };
 type AuditLog = { id: string; action: string; entityType: string; entityId: string | null; createdAt: string; actor: { name: string; email: string } | null };
 type Dependency = { id: string; sourceService: { id: string; name: string }; targetService: { id: string; name: string } };
 type Slo = { id: string; name: string; indicator: 'AVAILABILITY' | 'LATENCY'; targetPercent: number; windowDays: number; latencyThresholdMs: number | null; service: { id: string; name: string }; measurement: { sampleCount: number; goodCount: number; sliPercent: number | null; errorBudgetRemainingPercent: number | null; dataSource: string } };
+type Runbook = { id: string; title: string; url: string; category: string; isPrimary: boolean };
+type EscalationPolicy = { id: string; primaryContactEmail: string; secondaryContactEmail: string | null; escalationAfterMinutes: number; onCallUrl: string | null; notes: string | null };
 type CostSummary = {
   period: string; recordCount: number;
   totalsByCurrency: { currency: string; amount: number }[];
@@ -72,12 +74,17 @@ export default function Home() {
   const [costSummary, setCostSummary] = useState<CostSummary | null>(null);
   const [costBudgets, setCostBudgets] = useState<CostBudget[]>([]);
   const [doraMetrics, setDoraMetrics] = useState<DoraMetrics | null>(null);
+  const [runbookServiceId, setRunbookServiceId] = useState('');
+  const [runbooks, setRunbooks] = useState<Runbook[]>([]);
+  const [escalationPolicy, setEscalationPolicy] = useState<EscalationPolicy | null>(null);
+  const [runbookForm, setRunbookForm] = useState({ title: '', url: '', category: 'RUNBOOK', isPrimary: false });
+  const [policyForm, setPolicyForm] = useState({ primaryContactEmail: '', secondaryContactEmail: '', escalationAfterMinutes: '15', onCallUrl: '', notes: '' });
   const [budgetForm, setBudgetForm] = useState({ name: '', amount: '500', currency: 'USD', serviceId: '', thresholdPercent: '80' });
   const [costImportText, setCostImportText] = useState('');
   const [dependencyForm, setDependencyForm] = useState({ sourceServiceId: '', targetServiceId: '' });
   const [sloForm, setSloForm] = useState({ serviceId: '', name: '', indicator: 'AVAILABILITY' as Slo['indicator'], targetPercent: '99.9', windowDays: '30', latencyThresholdMs: '300' });
   const [sampleForm, setSampleForm] = useState({ sloId: '', success: true, latencyMs: '100' });
-  const [incidentForm, setIncidentForm] = useState({ title: '', description: '', severity: 'MEDIUM' as Incident['severity'], assignedToUserId: '' });
+  const [incidentForm, setIncidentForm] = useState({ title: '', description: '', severity: 'MEDIUM' as Incident['severity'], assignedToUserId: '', serviceId: '' });
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteToken, setInviteToken] = useState('');
   const [authForm, setAuthForm] = useState({ name: '', email: '', password: '', tenantName: '', tenantSlug: '' });
@@ -88,6 +95,20 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+
+  async function refreshServiceOperations(accessToken: string, serviceId: string) {
+    setRunbookServiceId(serviceId);
+    if (!serviceId) { setRunbooks([]); setEscalationPolicy(null); return; }
+    const [rows, policy] = await Promise.all([
+      apiRequest<Runbook[]>('/services/' + serviceId + '/runbooks', accessToken),
+      apiRequest<EscalationPolicy | null>('/services/' + serviceId + '/escalation-policy', accessToken),
+    ]);
+    setRunbooks(rows); setEscalationPolicy(policy);
+    setPolicyForm({
+      primaryContactEmail: policy?.primaryContactEmail ?? '', secondaryContactEmail: policy?.secondaryContactEmail ?? '',
+      escalationAfterMinutes: String(policy?.escalationAfterMinutes ?? 15), onCallUrl: policy?.onCallUrl ?? '', notes: policy?.notes ?? '',
+    });
+  }
 
   async function refreshFinops(accessToken: string, period: string) {
     const [summary, budgets, dora] = await Promise.all([
@@ -108,6 +129,7 @@ export default function Home() {
       apiRequest<Slo[]>('/slos', accessToken),
     ]);
     setServices(serviceRows); setTeams(teamRows); setMembers(memberRows); setIncidents(incidentRows); setDependencies(dependencyRows); setSlos(sloRows);
+    await refreshServiceOperations(accessToken, serviceRows[0]?.id ?? '');
     if (role === 'ADMIN') setAuditLogs(await apiRequest<AuditLog[]>('/audit-logs?limit=30', accessToken));
     await refreshFinops(accessToken, costPeriod);
   }
@@ -159,6 +181,62 @@ export default function Home() {
     finally { setBusy(false); }
   }
 
+  async function selectRunbookService(serviceId: string) {
+    if (!token) return;
+    try { await refreshServiceOperations(token, serviceId); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not load service operations'); }
+  }
+
+  async function createRunbook(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!token || !runbookServiceId) return; setBusy(true); setError('');
+    try {
+      await apiRequest('/services/' + runbookServiceId + '/runbooks', token, { method: 'POST', body: JSON.stringify(runbookForm) });
+      await refreshServiceOperations(token, runbookServiceId);
+      setRunbookForm({ title: '', url: '', category: 'RUNBOOK', isPrimary: false });
+      setNotice('Runbook reference saved.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not save runbook'); }
+    finally { setBusy(false); }
+  }
+
+  async function deleteRunbook(id: string) {
+    if (!token || !runbookServiceId) return; setBusy(true); setError('');
+    try {
+      await apiRequest('/services/' + runbookServiceId + '/runbooks/' + id, token, { method: 'DELETE' });
+      setRunbooks(rows => rows.filter(row => row.id !== id)); setNotice('Runbook reference removed.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not remove runbook'); }
+    finally { setBusy(false); }
+  }
+
+  async function saveEscalationPolicy(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!token || !runbookServiceId) return; setBusy(true); setError('');
+    try {
+      await apiRequest('/services/' + runbookServiceId + '/escalation-policy', token, {
+        method: 'PUT',
+        body: JSON.stringify({
+          primaryContactEmail: policyForm.primaryContactEmail,
+          ...(policyForm.secondaryContactEmail ? { secondaryContactEmail: policyForm.secondaryContactEmail } : {}),
+          escalationAfterMinutes: Number(policyForm.escalationAfterMinutes),
+          ...(policyForm.onCallUrl ? { onCallUrl: policyForm.onCallUrl } : {}),
+          ...(policyForm.notes ? { notes: policyForm.notes } : {}),
+        }),
+      });
+      await refreshServiceOperations(token, runbookServiceId);
+      setNotice('Escalation policy saved.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not save escalation policy'); }
+    finally { setBusy(false); }
+  }
+
+  async function escalateIncident(id: string) {
+    if (!token) return; setBusy(true); setError('');
+    try {
+      await apiRequest('/incidents/' + id + '/escalate', token, { method: 'POST' });
+      setIncidents(await apiRequest<Incident[]>('/incidents', token));
+      if (identity?.role === 'ADMIN') setAuditLogs(await apiRequest<AuditLog[]>('/audit-logs?limit=30', token));
+      setNotice('Incident escalation recorded in the timeline and audit trail.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not escalate incident'); }
+    finally { setBusy(false); }
+  }
+
   async function createDependency(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!token) return; setBusy(true); setError('');
     try { const row = await apiRequest<Dependency>('/service-dependencies', token, { method: 'POST', body: JSON.stringify(dependencyForm) }); setDependencies(rows => [...rows, row]); setDependencyForm({ sourceServiceId: '', targetServiceId: '' }); setNotice('Dependency created.'); }
@@ -191,8 +269,8 @@ export default function Home() {
     event.preventDefault(); if (!token) return;
     setBusy(true); setError(''); setNotice('');
     try {
-      const created = await apiRequest<Incident>('/incidents', token, { method: 'POST', body: JSON.stringify({ ...incidentForm, description: incidentForm.description || undefined, assignedToUserId: incidentForm.assignedToUserId || undefined }) });
-      setIncidents(current => [created, ...current]); setIncidentForm({ title: '', description: '', severity: 'MEDIUM', assignedToUserId: '' });
+      const created = await apiRequest<Incident>('/incidents', token, { method: 'POST', body: JSON.stringify({ ...incidentForm, description: incidentForm.description || undefined, assignedToUserId: incidentForm.assignedToUserId || undefined, serviceId: incidentForm.serviceId || undefined }) });
+      setIncidents(current => [created, ...current]); setIncidentForm({ title: '', description: '', severity: 'MEDIUM', assignedToUserId: '', serviceId: '' });
       if (identity?.role === 'ADMIN') setAuditLogs(await apiRequest<AuditLog[]>('/audit-logs?limit=30', token));
       setNotice('Incident created and recorded in the audit trail.');
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not create incident'); }
@@ -348,7 +426,7 @@ export default function Home() {
   }
 
   function signOut() {
-    setToken(''); setIdentity(null); setServices([]); setTeams([]); setMembers([]); setIncidents([]); setAuditLogs([]); setDependencies([]); setSlos([]); setCostSummary(null); setCostBudgets([]); setDoraMetrics(null);
+    setToken(''); setIdentity(null); setServices([]); setTeams([]); setMembers([]); setIncidents([]); setAuditLogs([]); setDependencies([]); setSlos([]); setRunbookServiceId(''); setRunbooks([]); setEscalationPolicy(null); setCostSummary(null); setCostBudgets([]); setDoraMetrics(null);
     setInviteToken(''); setEditingId(null); setEditingTeamId(null);
     setServiceForm(emptyService); setTeamForm(emptyTeam); setNotice('Signed out.');
   }
