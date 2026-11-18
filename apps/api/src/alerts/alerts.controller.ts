@@ -1,8 +1,9 @@
-import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthenticatedUser, JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { SetAlertRuleEnabledDto } from './dto/set-alert-rule-enabled.dto';
 import { CreateAlertRuleDto } from './dto/create-alert-rule.dto';
 import { AlertsService } from './alerts.service';
 
@@ -16,8 +17,7 @@ export class AlertsController {
     return this.alerts.create(user.tenantId, user.sub, sloId, body);
   }
   @Patch(':id/enabled') @Roles('ADMIN')
-  setEnabled(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string, @Body() body: { enabled: boolean }) {
-    if (typeof body?.enabled !== 'boolean') throw new BadRequestException('enabled must be a boolean');
+  setEnabled(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string, @Body() body: SetAlertRuleEnabledDto) {
     return this.alerts.setEnabled(user.tenantId, user.sub, id, body.enabled);
   }
   @Post('evaluate') @Roles('ADMIN')
