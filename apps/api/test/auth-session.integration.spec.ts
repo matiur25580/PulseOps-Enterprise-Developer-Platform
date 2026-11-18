@@ -57,12 +57,15 @@ describe('Authentication session lifecycle', () => {
 
   it('allows login with the workspace display name as well as its generated slug', async () => {
     const workspaceName = `Engineering ${suffix}`;
+    const workspaceEmail = `workspace-name-${suffix}@pulseops.test`;
     const registered = await request(app.getHttpServer()).post('/api/v1/auth/register')
-      .send({ name: 'Workspace Name Login', email, password, tenantName: workspaceName }).expect(201);
+      .send({ name: 'Workspace Name Login', email: workspaceEmail, password, tenantName: workspaceName }).expect(201);
     await request(app.getHttpServer()).post('/api/v1/auth/login')
-      .send({ email, password, tenantSlug: workspaceName }).expect(201);
+      .send({ email: workspaceEmail, password, tenantSlug: workspaceName }).expect(201);
     await request(app.getHttpServer()).post('/api/v1/auth/login')
-      .send({ email, password, tenantSlug: registered.body.tenant.slug }).expect(201);
+      .send({ email: workspaceEmail, password, tenantSlug: registered.body.tenant.slug }).expect(201);
+    await prisma.tenant.delete({ where: { id: registered.body.tenant.id } });
+    await prisma.user.delete({ where: { email: workspaceEmail } });
   });
 
   it('rate-limits repeated login attempts for the same IP and account', async () => {
