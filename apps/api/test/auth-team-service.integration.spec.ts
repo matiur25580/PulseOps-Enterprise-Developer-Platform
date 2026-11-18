@@ -28,6 +28,7 @@ describe('PostgreSQL auth → team → service workflow', () => {
     if (prisma) {
       await prisma.tenant.deleteMany({ where: { slug: { startsWith: `integration-${suffix}` } } });
       await prisma.user.deleteMany({ where: { email } });
+      await prisma.user.deleteMany({ where: { email: 'member-' + suffix + '@pulseops.test' } });
     }
     await app?.close();
   });
