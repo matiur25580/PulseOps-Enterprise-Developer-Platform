@@ -8,7 +8,9 @@
     "dev:api": "pnpm --filter @pulseops/api start:dev",
     "dev:web": "pnpm --filter @pulseops/web dev",
     "db:generate": "pnpm --filter @pulseops/api prisma:generate",
-    "test:api": "pnpm --filter @pulseops/api test"
+    "test:api": "pnpm --filter @pulseops/api test",
+    "test:integration": "pnpm --filter @pulseops/api test:integration",
+    "test:browser": "pnpm --filter @pulseops/web test:e2e"
   },
   "engines": {
     "node": ">=20.0.0"
