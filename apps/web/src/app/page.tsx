@@ -10,6 +10,8 @@ type Service = {
 };
 type Team = { id: string; name: string; email: string | null; createdAt: string; updatedAt: string };
 type Member = { id: string; role: 'ADMIN' | 'MEMBER'; user: { id: string; name: string; email: string } };
+type Incident = { id: string; title: string; description: string | null; severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'; status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED'; assignedToUserId: string | null; assignee: { id: string; name: string; email: string } | null; events: { id: string; eventType: string; message: string; createdAt: string; actor: { name: string } | null }[]; createdAt: string; };
+type AuditLog = { id: string; action: string; entityType: string; entityId: string | null; createdAt: string; actor: { name: string; email: string } | null };
 type AuthPayload = {
   accessToken: string;
   user: { id: string; name: string; email: string };
@@ -41,6 +43,9 @@ export default function Home() {
   const [services, setServices] = useState<Service[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [incidentForm, setIncidentForm] = useState({ title: '', description: '', severity: 'MEDIUM' as Incident['severity'], assignedToUserId: '' });
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteToken, setInviteToken] = useState('');
   const [authForm, setAuthForm] = useState({ name: '', email: '', password: '', tenantName: '', tenantSlug: '' });
@@ -52,16 +57,40 @@ export default function Home() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  async function refreshWorkspace(accessToken: string) {
-    const [serviceRows, teamRows, memberRows] = await Promise.all([
+  async function refreshWorkspace(accessToken: string, role: AuthPayload['role']) {
+    const [serviceRows, teamRows, memberRows, incidentRows] = await Promise.all([
       apiRequest<Service[]>('/services', accessToken),
       apiRequest<Team[]>('/teams', accessToken),
       apiRequest<Member[]>('/members', accessToken),
+      apiRequest<Incident[]>('/incidents', accessToken),
     ]);
-    setServices(serviceRows);
-    setTeams(teamRows);
-    setMembers(memberRows);
+    setServices(serviceRows); setTeams(teamRows); setMembers(memberRows); setIncidents(incidentRows);
+    if (role === 'ADMIN') setAuditLogs(await apiRequest<AuditLog[]>('/audit-logs?limit=30', accessToken));
   }
+
+  async function createIncident(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!token) return;
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const created = await apiRequest<Incident>('/incidents', token, { method: 'POST', body: JSON.stringify({ ...incidentForm, description: incidentForm.description || undefined, assignedToUserId: incidentForm.assignedToUserId || undefined }) });
+      setIncidents(current => [created, ...current]); setIncidentForm({ title: '', description: '', severity: 'MEDIUM', assignedToUserId: '' });
+      if (identity?.role === 'ADMIN') setAuditLogs(await apiRequest<AuditLog[]>('/audit-logs?limit=30', token));
+      setNotice('Incident created and recorded in the audit trail.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not create incident'); }
+    finally { setBusy(false); }
+  }
+
+  async function updateIncident(id: string, action: 'acknowledge' | 'resolve') {
+    if (!token) return; setBusy(true); setError(''); setNotice('');
+    try {
+      await apiRequest<Incident>(`/incidents/${id}/${action}`, token, { method: 'POST', body: action === 'resolve' ? JSON.stringify({ message: 'Resolved from PulseOps workspace' }) : undefined });
+      const rows = await apiRequest<Incident[]>('/incidents', token); setIncidents(rows);
+      if (identity?.role === 'ADMIN') setAuditLogs(await apiRequest<AuditLog[]>('/audit-logs?limit=30', token));
+      setNotice(action === 'acknowledge' ? 'Incident acknowledged.' : 'Incident resolved.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not update incident'); }
+    finally { setBusy(false); }
+  }
+
 
   async function authenticate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,7 +104,7 @@ export default function Home() {
       });
       setToken(payload.accessToken);
       setIdentity(payload);
-      await refreshWorkspace(payload.accessToken);
+      await refreshWorkspace(payload.accessToken, payload.role);
       setNotice(mode === 'register' ? 'Workspace created. Your Service Catalog and Team Management are ready.' : 'Signed in successfully.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
@@ -198,7 +227,7 @@ export default function Home() {
   }
 
   function signOut() {
-    setToken(''); setIdentity(null); setServices([]); setTeams([]); setMembers([]);
+    setToken(''); setIdentity(null); setServices([]); setTeams([]); setMembers([]); setIncidents([]); setAuditLogs([]);
     setInviteToken(''); setEditingId(null); setEditingTeamId(null);
     setServiceForm(emptyService); setTeamForm(emptyTeam); setNotice('Signed out.');
   }
@@ -316,6 +345,30 @@ export default function Home() {
               <p className="fine-print">Email delivery is not configured. Share this one-time token through a secure channel.</p>
             </form>}
           </div>
+        </section>
+
+        <section className="workspace-members">
+          <div className="catalog-toolbar"><div><p className="eyebrow">ON-CALL OPERATIONS</p><h2>Incident Management</h2><p className="muted">{incidents.filter(item => item.status !== 'RESOLVED').length} active incident(s) · tenant scoped</p></div><span className="counter">LIVE WORKSPACE DATA</span></div>
+          <form className="team-form" onSubmit={createIncident}>
+            <h3>Report an incident</h3>
+            <label>Incident title<input required minLength={3} maxLength={160} value={incidentForm.title} onChange={event => setIncidentForm({ ...incidentForm, title: event.target.value })} placeholder="Elevated API latency" /></label>
+            <label>Description<textarea maxLength={5000} rows={2} value={incidentForm.description} onChange={event => setIncidentForm({ ...incidentForm, description: event.target.value })} placeholder="Impact, symptoms and context" /></label>
+            <label>Severity<select value={incidentForm.severity} onChange={event => setIncidentForm({ ...incidentForm, severity: event.target.value as Incident['severity'] })}><option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option></select></label>
+            <label>Assign to<select value={incidentForm.assignedToUserId} onChange={event => setIncidentForm({ ...incidentForm, assignedToUserId: event.target.value })}><option value="">Unassigned</option>{members.map(member => <option key={member.user.id} value={member.user.id}>{member.user.name}</option>)}</select></label>
+            <button className="primary-button" disabled={busy}>Create incident →</button>
+          </form>
+          {incidents.length === 0 ? <div className="empty-state"><h3>No incidents reported</h3><p>New incidents and their lifecycle events will appear here.</p></div> : <div className="service-list">
+            {incidents.map(incident => <article className="service-row" key={incident.id}>
+              <div className="service-symbol">!</div><div className="service-info"><div className="service-title-line"><h3>{incident.title}</h3><span className="lifecycle">{incident.severity} · {incident.status}</span></div>
+                <p>{incident.description || 'No description provided'}</p><span className="service-owner">Assignee: {incident.assignee?.name ?? 'Unassigned'} · {new Date(incident.createdAt).toLocaleString()}</span>
+                <div className="fine-print">{incident.events.map(item => <p key={item.id}>{item.eventType}: {item.message} · {new Date(item.createdAt).toLocaleString()}</p>)}</div>
+              </div>
+              <div className="service-actions">{incident.status === 'OPEN' && <button disabled={busy} onClick={() => updateIncident(incident.id, 'acknowledge')}>Acknowledge</button>}{incident.status !== 'RESOLVED' && <button className="danger-link" disabled={busy} onClick={() => updateIncident(incident.id, 'resolve')}>Resolve</button>}</div>
+            </article>)}
+          </div>}
+          {identity.role === 'ADMIN' && <div className="catalog-main"><div className="catalog-toolbar"><div><h2>Audit Trail</h2><p className="muted">Recent privileged and incident operations</p></div><span className="counter">ADMIN ONLY</span></div>
+            {auditLogs.length === 0 ? <p className="muted">No audit events yet.</p> : auditLogs.map(log => <article className="team-row" key={log.id}><div><strong>{log.action}</strong><p className="muted">{log.entityType} · {log.actor?.name ?? 'System'} · {new Date(log.createdAt).toLocaleString()}</p></div></article>)}
+          </div>}
         </section>
 
         <div className="catalog-layout">
