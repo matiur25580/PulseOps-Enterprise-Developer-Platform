@@ -18,7 +18,7 @@ Roadmap items are targets, not completed features. Each phase should produce a d
 - [x] API-enforced ADMIN/MEMBER RBAC with live membership revalidation and last-admin protection.
 - [x] API unit tests for tenant isolation and cross-tenant resource access, executed in CI.
 - [ ] Apply migrations against a running local database and verify readiness.
-- [ ] API end-to-end tests against PostgreSQL and browser-level UI tests.
+- [x] API integration tests against PostgreSQL and browser-level UI tests.
 
 ## Phase 2 — Operational workflows
 - [x] Service ownership assignment in the workspace UI.
