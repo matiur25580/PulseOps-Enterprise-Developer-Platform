@@ -61,6 +61,20 @@ async function apiRequest<T>(path: string, token?: string, init: RequestInit = {
   return payload as T;
 }
 
+
+function getSessionIdFromAccessToken(accessToken: string): string | null {
+  try {
+    const encodedPayload = accessToken.split('.')[1];
+    if (!encodedPayload) return null;
+    const base64 = encodedPayload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    const claims = JSON.parse(atob(padded)) as { sid?: unknown };
+    return typeof claims.sid === 'string' ? claims.sid : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function Home() {
   const [token, setToken] = useState('');
   const [mode, setMode] = useState<'login' | 'register'>('register');
@@ -169,9 +183,22 @@ export default function Home() {
 
   async function revokeSession(id: string) {
     if (!token || !window.confirm('Revoke this session? Any device using it will need to sign in again.')) return;
-    setBusy(true); setError('');
+    const isCurrentSession = getSessionIdFromAccessToken(token) === id;
+    setBusy(true); setError(''); setNotice('');
     try {
       await apiRequest('/auth/sessions/' + encodeURIComponent(id), token, { method: 'DELETE' });
+      if (isCurrentSession) {
+        // The API correctly invalidates this bearer token. Do not make another
+        // protected request with it; clear local workspace state and show sign-in.
+        setToken(''); setIdentity(null); setSessions([]);
+        setServices([]); setTeams([]); setMembers([]); setIncidents([]); setAuditLogs([]); setDependencies([]); setSlos([]);
+        setRunbookServiceId(''); setRunbooks([]); setEscalationPolicy(null); setCostSummary(null); setCostBudgets([]); setDoraMetrics(null);
+        setInviteToken(''); setEditingId(null); setEditingTeamId(null);
+        setServiceForm(emptyService); setTeamForm(emptyTeam);
+        setError('This session was revoked. Sign in again to continue.');
+        return;
+      }
+      // A different device's session was revoked; this token remains valid.
       await refreshSessions(token);
       setNotice('Session revoked successfully.');
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not revoke session'); }
