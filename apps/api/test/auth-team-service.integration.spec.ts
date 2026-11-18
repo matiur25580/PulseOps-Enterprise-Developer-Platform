@@ -127,9 +127,12 @@ describe('PostgreSQL auth → team → service workflow', () => {
     expect(invitation.body.acceptanceToken).toHaveLength(64);
     const accepted = await request(app.getHttpServer()).post('/api/v1/auth/accept-invitation').send({ name: 'Invited Member', email: memberEmail, password, token: invitation.body.acceptanceToken }).expect(201);
     const memberToken = accepted.body.accessToken;
+    await request(app.getHttpServer()).patch('/api/v1/members/' + accepted.body.user.id + '/role').set('Authorization', 'Bearer ' + token).send({ role: 'MEMBER' }).expect(200);
     const members = await request(app.getHttpServer()).get('/api/v1/members').set('Authorization', 'Bearer ' + token).expect(200);
     expect(members.body.find((row: { user: { email: string } }) => row.user.email === memberEmail)?.role).toBe('MEMBER');
     await request(app.getHttpServer()).get('/api/v1/teams').set('Authorization', 'Bearer ' + memberToken).expect(200);
+    await request(app.getHttpServer()).post('/api/v1/members/invitations').set('Authorization', 'Bearer ' + memberToken).send({ email: 'blocked-invite-' + suffix + '@pulseops.test' }).expect(403);
+    await request(app.getHttpServer()).patch('/api/v1/members/' + accepted.body.user.id + '/role').set('Authorization', 'Bearer ' + token).send({ role: 'ADMIN' }).expect(200);
     await request(app.getHttpServer()).post('/api/v1/teams').set('Authorization', 'Bearer ' + memberToken).send({ name: 'Member Forbidden Team' }).expect(403);
     await request(app.getHttpServer()).patch('/api/v1/members/' + accepted.body.user.id + '/role').set('Authorization', 'Bearer ' + token).send({ role: 'ADMIN' }).expect(200);
     await request(app.getHttpServer()).post('/api/v1/teams').set('Authorization', 'Bearer ' + memberToken).send({ name: 'Delegated Admin Team' }).expect(201);
@@ -138,6 +141,10 @@ describe('PostgreSQL auth → team → service workflow', () => {
     await request(app.getHttpServer()).delete('/api/v1/members/' + accepted.body.user.id).set('Authorization', 'Bearer ' + token).expect(200);
     await request(app.getHttpServer()).get('/api/v1/teams').set('Authorization', 'Bearer ' + memberToken).expect(401);
     await request(app.getHttpServer()).post('/api/v1/auth/accept-invitation').send({ name: 'Invited Member', email: memberEmail, password, token: invitation.body.acceptanceToken }).expect(401);
+    const revokeEmail = 'revoked-' + suffix + '@pulseops.test';
+    const revoked = await request(app.getHttpServer()).post('/api/v1/members/invitations').set('Authorization', 'Bearer ' + token).send({ email: revokeEmail }).expect(201);
+    await request(app.getHttpServer()).delete('/api/v1/members/invitations/' + revoked.body.invitation.id).set('Authorization', 'Bearer ' + token).expect(200);
+    await request(app.getHttpServer()).post('/api/v1/auth/accept-invitation').send({ name: 'Revoked Invite', email: revokeEmail, password, token: revoked.body.acceptanceToken }).expect(401);
     await prisma.user.deleteMany({ where: { email: memberEmail } });
   });
 
