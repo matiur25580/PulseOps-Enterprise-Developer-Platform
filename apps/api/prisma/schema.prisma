@@ -34,6 +34,7 @@ model Tenant {
   dependencies ServiceDependency[]
   sloDefinitions SloDefinition[]
   alertRules AlertRule[]
+  githubRepositories GitHubRepositoryIntegration[]
 
   @@map("tenants")
 }
@@ -116,6 +117,7 @@ model Service {
   dependenciesFrom ServiceDependency[] @relation("DependencySource")
   dependenciesTo ServiceDependency[] @relation("DependencyTarget")
   sloDefinitions SloDefinition[]
+  githubRepositories GitHubRepositoryIntegration[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, lifecycle])
@@ -300,4 +302,80 @@ model OutboxEvent {
   @@index([status, availableAt, createdAt])
   @@index([tenantId, createdAt])
   @@map("outbox_events")
+}
+
+
+model GitHubRepositoryIntegration {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  serviceId         String   @map("service_id") @db.Uuid
+  repositoryFullName String @unique @map("repository_full_name")
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  service           Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  pullRequests      GitHubPullRequest[]
+  deployments       DeploymentRecord[]
+  deliveries        GitHubWebhookDelivery[]
+
+  @@unique([tenantId, serviceId])
+  @@index([tenantId, active])
+  @@map("github_repository_integrations")
+}
+
+model GitHubPullRequest {
+  id              String   @id @default(uuid()) @db.Uuid
+  integrationId   String   @map("integration_id") @db.Uuid
+  number          Int
+  title           String
+  url             String
+  state           String
+  mergedAt        DateTime? @map("merged_at")
+  mergeCommitSha  String?  @map("merge_commit_sha")
+  headSha         String   @map("head_sha")
+  baseRef         String   @map("base_ref")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  integration     GitHubRepositoryIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, number])
+  @@index([integrationId, mergedAt])
+  @@index([mergeCommitSha])
+  @@map("github_pull_requests")
+}
+
+model DeploymentRecord {
+  id                String   @id @default(uuid()) @db.Uuid
+  integrationId     String   @map("integration_id") @db.Uuid
+  githubDeploymentId String @map("github_deployment_id")
+  statusId          String   @map("status_id")
+  sha               String
+  ref               String
+  environment       String
+  state             String
+  deployedAt        DateTime? @map("deployed_at")
+  statusUpdatedAt   DateTime @map("status_updated_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  integration       GitHubRepositoryIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, githubDeploymentId])
+  @@index([integrationId, statusUpdatedAt])
+  @@index([integrationId, state, deployedAt])
+  @@index([sha])
+  @@map("deployment_records")
+}
+
+model GitHubWebhookDelivery {
+  id                String   @id @default(uuid()) @db.Uuid
+  deliveryId        String   @unique @map("delivery_id")
+  integrationId     String   @map("integration_id") @db.Uuid
+  eventName         String   @map("event_name")
+  action            String?
+  receivedAt        DateTime @default(now()) @map("received_at")
+  integration       GitHubRepositoryIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId, receivedAt])
+  @@map("github_webhook_deliveries")
 }
