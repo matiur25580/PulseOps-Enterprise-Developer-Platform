@@ -57,6 +57,13 @@ export class AlertsService {
 
       const message = `SLO alert: ${rule.slo.name} for ${rule.slo.service.name} measured ${observedPercent.toFixed(3)}%, at or below ${rule.thresholdPercent}%.`;
       const created = await this.prisma.$transaction(async tx => {
+        // Compare-and-set the cooldown timestamp so concurrent evaluators cannot
+        // create duplicate incidents for the same rule.
+        const claimed = await tx.alertRule.updateMany({
+          where: { id: rule.id, enabled: true, lastTriggeredAt: rule.lastTriggeredAt },
+          data: { lastTriggeredAt: new Date() },
+        });
+        if (claimed.count !== 1) return null;
         const incident = await tx.incident.create({
           data: {
             tenantId, createdByUserId: actorId, title: `SLO breach: ${rule.slo.service.name}`,
@@ -66,10 +73,10 @@ export class AlertsService {
           select: { id: true },
         });
         await tx.alertEvent.create({ data: { ruleId: rule.id, incidentId: incident.id, observedPercent, thresholdPercent: rule.thresholdPercent, message } });
-        await tx.alertRule.update({ where: { id: rule.id }, data: { lastTriggeredAt: new Date() } });
         await tx.auditLog.create({ data: { tenantId, actorId, action: 'SLO_ALERT_TRIGGERED', entityType: 'INCIDENT', entityId: incident.id, metadata: { alertRuleId: rule.id, observedPercent, thresholdPercent: rule.thresholdPercent } } });
         return incident;
       });
+      if (!created) { outcomes.push({ ruleId: rule.id, state: 'COOLDOWN', observedPercent }); continue; }
       outcomes.push({ ruleId: rule.id, state: 'TRIGGERED', observedPercent, incidentId: created.id });
     }
     return { evaluatedAt: new Date().toISOString(), rulesEvaluated: rules.length, outcomes };
