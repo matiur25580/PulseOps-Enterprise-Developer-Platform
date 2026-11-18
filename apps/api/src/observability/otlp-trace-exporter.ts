@@ -9,6 +9,7 @@ type SpanData = {
   endTimeUnixNano: string;
   attributes: Array<{ key: string; value: { stringValue?: string; intValue?: string; doubleValue?: number } }>;
   statusCode: number;
+  traceFlags: string;
 };
 
 @Injectable()
@@ -46,6 +47,7 @@ export class OtlpTraceExporter {
             ...(span.parentSpanId ? { parentSpanId: span.parentSpanId } : {}),
             name: span.name,
             kind: 2,
+            flags: parseInt(span.traceFlags, 16),
             startTimeUnixNano: span.startTimeUnixNano,
             endTimeUnixNano: span.endTimeUnixNano,
             attributes: span.attributes,
