@@ -96,4 +96,31 @@ describe('Authentication session lifecycle', () => {
       .send({ email: `spray-final-${suffix}@pulseops.test`, password: 'Wrong-Password-2026!', tenantSlug: 'unknown-workspace' })
       .expect(429);
   });
+
+  it('rate-limits registration attempts for the same normalized email across different IPs', async () => {
+    const registrationEmail = `registration-limit-${suffix}@pulseops.test`;
+    let tenantId: string | undefined;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const response = await request(app.getHttpServer()).post('/api/v1/auth/register')
+        .set('X-Forwarded-For', `203.0.113.${attempt + 10}`)
+        .send({
+          name: 'Registration Limit',
+          email: attempt === 0 ? registrationEmail : registrationEmail.toUpperCase(),
+          password,
+          tenantName: `Registration Workspace ${suffix}`,
+        });
+      if (attempt === 0) {
+        expect(response.status).toBe(201);
+        tenantId = response.body.tenant.id;
+      } else {
+        expect(response.status).toBe(409);
+      }
+    }
+    await request(app.getHttpServer()).post('/api/v1/auth/register')
+      .set('X-Forwarded-For', '203.0.113.99')
+      .send({ name: 'Registration Limit', email: registrationEmail, password, tenantName: `Registration Workspace ${suffix}` })
+      .expect(429);
+    if (tenantId) await prisma.tenant.delete({ where: { id: tenantId } });
+    await prisma.user.deleteMany({ where: { email: registrationEmail } });
+  });
 });
