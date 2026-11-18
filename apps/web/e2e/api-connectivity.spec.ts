@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:4000').replace(/\/$/, '');
 
-test('deployed browser origin can call the API health endpoint with credentialed CORS', async ({ page }) => {
+test('browser origin can read the API health response with credentialed CORS', async ({ page }) => {
   await page.goto('/');
 
   const result = await page.evaluate(async (url) => {
@@ -16,8 +16,6 @@ test('deployed browser origin can call the API health endpoint with credentialed
       return {
         ok: response.ok,
         status: response.status,
-        allowOrigin: response.headers.get('access-control-allow-origin'),
-        allowCredentials: response.headers.get('access-control-allow-credentials'),
         body: await response.json(),
       };
     } catch (error) {
@@ -28,11 +26,11 @@ test('deployed browser origin can call the API health endpoint with credentialed
     }
   }, apiBaseUrl);
 
+  // A successful cross-origin fetch with credentials proves that the browser
+  // accepted the API's CORS response. ACAO/ACAC are not exposed to JS by default.
   expect(result, 'The browser must be able to read the API response (not just reach the server)').toMatchObject({
     ok: true,
     status: 200,
-    allowOrigin: new URL(page.url()).origin,
-    allowCredentials: 'true',
     body: { status: 'ok', service: 'pulseops-api' },
   });
 });
