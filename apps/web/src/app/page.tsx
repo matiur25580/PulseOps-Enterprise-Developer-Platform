@@ -10,10 +10,31 @@ type Service = {
 };
 type Team = { id: string; name: string; email: string | null; createdAt: string; updatedAt: string };
 type Member = { id: string; role: 'ADMIN' | 'MEMBER'; user: { id: string; name: string; email: string } };
-type Incident = { id: string; title: string; description: string | null; severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'; status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED'; assignedToUserId: string | null; assignee: { id: string; name: string; email: string } | null; events: { id: string; eventType: string; message: string; createdAt: string; actor: { name: string } | null }[]; createdAt: string; };
+type Incident = { id: string; title: string; description: string | null; serviceId?: string | null; service?: { id: string; name: string } | null; escalationLevel?: number; severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'; status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED'; assignedToUserId: string | null; assignee: { id: string; name: string; email: string } | null; events: { id: string; eventType: string; message: string; createdAt: string; actor: { name: string } | null }[]; createdAt: string; };
 type AuditLog = { id: string; action: string; entityType: string; entityId: string | null; createdAt: string; actor: { name: string; email: string } | null };
 type Dependency = { id: string; sourceService: { id: string; name: string }; targetService: { id: string; name: string } };
 type Slo = { id: string; name: string; indicator: 'AVAILABILITY' | 'LATENCY'; targetPercent: number; windowDays: number; latencyThresholdMs: number | null; service: { id: string; name: string }; measurement: { sampleCount: number; goodCount: number; sliPercent: number | null; errorBudgetRemainingPercent: number | null; dataSource: string } };
+type Runbook = { id: string; title: string; url: string; category: string; isPrimary: boolean };
+type EscalationPolicy = { id: string; primaryContactEmail: string; secondaryContactEmail: string | null; escalationAfterMinutes: number; onCallUrl: string | null; notes: string | null };
+type CostSummary = {
+  period: string; recordCount: number;
+  totalsByCurrency: { currency: string; amount: number }[];
+  byProvider: { provider: string; currency: string; amount: number }[];
+  byService: { serviceId: string | null; serviceName: string; currency: string; amount: number }[];
+  note: string;
+};
+type CostBudget = {
+  id: string; name: string; amount: number; currency: string; thresholdPercent: number;
+  actualAmount: number; utilizationPercent: number | null; recordCount: number;
+  serviceId: string | null; service: { id: string; name: string } | null; period: string;
+};
+type DoraMetrics = {
+  windowDays: number; deploymentFrequencyPerDay: number; deploymentFrequencyPerWeek: number;
+  leadTimeForChangesHours: number | null; changeFailureRatePercent: number | null; meanTimeToRestoreHours: number | null;
+  sampleSizes: { successfulDeployments: number; failedDeployments: number; deploymentAttempts: number; mergedPullRequests: number; leadTimeSamples: number; resolvedIncidents: number };
+  services: { serviceId: string; serviceName: string; repository: string }[];
+  limitations: string[];
+};
 type AuthPayload = {
   accessToken: string;
   user: { id: string; name: string; email: string };
@@ -49,10 +70,21 @@ export default function Home() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [dependencies, setDependencies] = useState<Dependency[]>([]);
   const [slos, setSlos] = useState<Slo[]>([]);
+  const [costPeriod, setCostPeriod] = useState(new Date().toISOString().slice(0, 7));
+  const [costSummary, setCostSummary] = useState<CostSummary | null>(null);
+  const [costBudgets, setCostBudgets] = useState<CostBudget[]>([]);
+  const [doraMetrics, setDoraMetrics] = useState<DoraMetrics | null>(null);
+  const [runbookServiceId, setRunbookServiceId] = useState('');
+  const [runbooks, setRunbooks] = useState<Runbook[]>([]);
+  const [escalationPolicy, setEscalationPolicy] = useState<EscalationPolicy | null>(null);
+  const [runbookForm, setRunbookForm] = useState({ title: '', url: '', category: 'RUNBOOK', isPrimary: false });
+  const [policyForm, setPolicyForm] = useState({ primaryContactEmail: '', secondaryContactEmail: '', escalationAfterMinutes: '15', onCallUrl: '', notes: '' });
+  const [budgetForm, setBudgetForm] = useState({ name: '', amount: '500', currency: 'USD', serviceId: '', thresholdPercent: '80' });
+  const [costImportText, setCostImportText] = useState('');
   const [dependencyForm, setDependencyForm] = useState({ sourceServiceId: '', targetServiceId: '' });
   const [sloForm, setSloForm] = useState({ serviceId: '', name: '', indicator: 'AVAILABILITY' as Slo['indicator'], targetPercent: '99.9', windowDays: '30', latencyThresholdMs: '300' });
   const [sampleForm, setSampleForm] = useState({ sloId: '', success: true, latencyMs: '100' });
-  const [incidentForm, setIncidentForm] = useState({ title: '', description: '', severity: 'MEDIUM' as Incident['severity'], assignedToUserId: '' });
+  const [incidentForm, setIncidentForm] = useState({ title: '', description: '', severity: 'MEDIUM' as Incident['severity'], assignedToUserId: '', serviceId: '' });
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteToken, setInviteToken] = useState('');
   const [authForm, setAuthForm] = useState({ name: '', email: '', password: '', tenantName: '', tenantSlug: '' });
@@ -64,6 +96,29 @@ export default function Home() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
+  async function refreshServiceOperations(accessToken: string, serviceId: string) {
+    setRunbookServiceId(serviceId);
+    if (!serviceId) { setRunbooks([]); setEscalationPolicy(null); return; }
+    const [rows, policy] = await Promise.all([
+      apiRequest<Runbook[]>('/services/' + serviceId + '/runbooks', accessToken),
+      apiRequest<EscalationPolicy | null>('/services/' + serviceId + '/escalation-policy', accessToken),
+    ]);
+    setRunbooks(rows); setEscalationPolicy(policy);
+    setPolicyForm({
+      primaryContactEmail: policy?.primaryContactEmail ?? '', secondaryContactEmail: policy?.secondaryContactEmail ?? '',
+      escalationAfterMinutes: String(policy?.escalationAfterMinutes ?? 15), onCallUrl: policy?.onCallUrl ?? '', notes: policy?.notes ?? '',
+    });
+  }
+
+  async function refreshFinops(accessToken: string, period: string) {
+    const [summary, budgets, dora] = await Promise.all([
+      apiRequest<CostSummary>('/finops/costs?period=' + period, accessToken),
+      apiRequest<CostBudget[]>('/finops/budgets?period=' + period, accessToken),
+      apiRequest<DoraMetrics>('/engineering-metrics/dora?windowDays=30', accessToken),
+    ]);
+    setCostSummary(summary); setCostBudgets(budgets); setDoraMetrics(dora);
+  }
+
   async function refreshWorkspace(accessToken: string, role: AuthPayload['role']) {
     const [serviceRows, teamRows, memberRows, incidentRows, dependencyRows, sloRows] = await Promise.all([
       apiRequest<Service[]>('/services', accessToken),
@@ -74,7 +129,112 @@ export default function Home() {
       apiRequest<Slo[]>('/slos', accessToken),
     ]);
     setServices(serviceRows); setTeams(teamRows); setMembers(memberRows); setIncidents(incidentRows); setDependencies(dependencyRows); setSlos(sloRows);
+    await refreshServiceOperations(accessToken, serviceRows[0]?.id ?? '');
     if (role === 'ADMIN') setAuditLogs(await apiRequest<AuditLog[]>('/audit-logs?limit=30', accessToken));
+    await refreshFinops(accessToken, costPeriod);
+  }
+
+  async function changeCostPeriod(period: string) {
+    setCostPeriod(period);
+    if (!token) return;
+    try { await refreshFinops(token, period); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not load FinOps period'); }
+  }
+
+  async function createCostBudget(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!token) return; setBusy(true); setError('');
+    try {
+      await apiRequest('/finops/budgets', token, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: budgetForm.name, amount: Number(budgetForm.amount), currency: budgetForm.currency.toUpperCase(),
+          ...(budgetForm.serviceId ? { serviceId: budgetForm.serviceId } : {}),
+          thresholdPercent: Number(budgetForm.thresholdPercent),
+        }),
+      });
+      await refreshFinops(token, costPeriod);
+      setBudgetForm({ ...budgetForm, name: '' });
+      setNotice('FinOps budget created.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not create budget'); }
+    finally { setBusy(false); }
+  }
+
+  async function importCostRecords(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!token) return; setBusy(true); setError('');
+    try {
+      const payload = JSON.parse(costImportText);
+      const result = await apiRequest<{ recordsProcessed: number }>('/finops/cost-records/import', token, { method: 'POST', body: JSON.stringify(payload) });
+      await refreshFinops(token, costPeriod);
+      setNotice(result.recordsProcessed + ' cost record(s) imported or updated.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Invalid JSON or cost import failed'); }
+    finally { setBusy(false); }
+  }
+
+  async function evaluateCostBudgets() {
+    if (!token) return; setBusy(true); setError('');
+    try {
+      const result = await apiRequest<{ outcomes: { state: string }[] }>('/finops/budgets/evaluate?period=' + costPeriod, token, { method: 'POST' });
+      await refreshFinops(token, costPeriod);
+      const triggered = result.outcomes.filter(item => item.state === 'THRESHOLD_REACHED').length;
+      setNotice('Budget evaluation complete: ' + triggered + ' threshold(s) reached.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not evaluate budgets'); }
+    finally { setBusy(false); }
+  }
+
+  async function selectRunbookService(serviceId: string) {
+    if (!token) return;
+    try { await refreshServiceOperations(token, serviceId); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not load service operations'); }
+  }
+
+  async function createRunbook(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!token || !runbookServiceId) return; setBusy(true); setError('');
+    try {
+      await apiRequest('/services/' + runbookServiceId + '/runbooks', token, { method: 'POST', body: JSON.stringify(runbookForm) });
+      await refreshServiceOperations(token, runbookServiceId);
+      setRunbookForm({ title: '', url: '', category: 'RUNBOOK', isPrimary: false });
+      setNotice('Runbook reference saved.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not save runbook'); }
+    finally { setBusy(false); }
+  }
+
+  async function deleteRunbook(id: string) {
+    if (!token || !runbookServiceId) return; setBusy(true); setError('');
+    try {
+      await apiRequest('/services/' + runbookServiceId + '/runbooks/' + id, token, { method: 'DELETE' });
+      setRunbooks(rows => rows.filter(row => row.id !== id)); setNotice('Runbook reference removed.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not remove runbook'); }
+    finally { setBusy(false); }
+  }
+
+  async function saveEscalationPolicy(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!token || !runbookServiceId) return; setBusy(true); setError('');
+    try {
+      await apiRequest('/services/' + runbookServiceId + '/escalation-policy', token, {
+        method: 'PUT',
+        body: JSON.stringify({
+          primaryContactEmail: policyForm.primaryContactEmail,
+          ...(policyForm.secondaryContactEmail ? { secondaryContactEmail: policyForm.secondaryContactEmail } : {}),
+          escalationAfterMinutes: Number(policyForm.escalationAfterMinutes),
+          ...(policyForm.onCallUrl ? { onCallUrl: policyForm.onCallUrl } : {}),
+          ...(policyForm.notes ? { notes: policyForm.notes } : {}),
+        }),
+      });
+      await refreshServiceOperations(token, runbookServiceId);
+      setNotice('Escalation policy saved.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not save escalation policy'); }
+    finally { setBusy(false); }
+  }
+
+  async function escalateIncident(id: string) {
+    if (!token) return; setBusy(true); setError('');
+    try {
+      await apiRequest('/incidents/' + id + '/escalate', token, { method: 'POST' });
+      setIncidents(await apiRequest<Incident[]>('/incidents', token));
+      if (identity?.role === 'ADMIN') setAuditLogs(await apiRequest<AuditLog[]>('/audit-logs?limit=30', token));
+      setNotice('Incident escalation recorded in the timeline and audit trail.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not escalate incident'); }
+    finally { setBusy(false); }
   }
 
   async function createDependency(event: FormEvent<HTMLFormElement>) {
@@ -109,8 +269,8 @@ export default function Home() {
     event.preventDefault(); if (!token) return;
     setBusy(true); setError(''); setNotice('');
     try {
-      const created = await apiRequest<Incident>('/incidents', token, { method: 'POST', body: JSON.stringify({ ...incidentForm, description: incidentForm.description || undefined, assignedToUserId: incidentForm.assignedToUserId || undefined }) });
-      setIncidents(current => [created, ...current]); setIncidentForm({ title: '', description: '', severity: 'MEDIUM', assignedToUserId: '' });
+      const created = await apiRequest<Incident>('/incidents', token, { method: 'POST', body: JSON.stringify({ ...incidentForm, description: incidentForm.description || undefined, assignedToUserId: incidentForm.assignedToUserId || undefined, serviceId: incidentForm.serviceId || undefined }) });
+      setIncidents(current => [created, ...current]); setIncidentForm({ title: '', description: '', severity: 'MEDIUM', assignedToUserId: '', serviceId: '' });
       if (identity?.role === 'ADMIN') setAuditLogs(await apiRequest<AuditLog[]>('/audit-logs?limit=30', token));
       setNotice('Incident created and recorded in the audit trail.');
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not create incident'); }
@@ -266,7 +426,7 @@ export default function Home() {
   }
 
   function signOut() {
-    setToken(''); setIdentity(null); setServices([]); setTeams([]); setMembers([]); setIncidents([]); setAuditLogs([]); setDependencies([]); setSlos([]);
+    setToken(''); setIdentity(null); setServices([]); setTeams([]); setMembers([]); setIncidents([]); setAuditLogs([]); setDependencies([]); setSlos([]); setRunbookServiceId(''); setRunbooks([]); setEscalationPolicy(null); setCostSummary(null); setCostBudgets([]); setDoraMetrics(null);
     setInviteToken(''); setEditingId(null); setEditingTeamId(null);
     setServiceForm(emptyService); setTeamForm(emptyTeam); setNotice('Signed out.');
   }
@@ -421,12 +581,97 @@ export default function Home() {
           </form>}
         </section>
 
+        <section className="team-panel intelligence-panel">
+          <div className="catalog-toolbar">
+            <div><p className="eyebrow">ENGINEERING INTELLIGENCE</p><h2>Delivery & FinOps</h2><p className="muted">DORA delivery signals and allocated cloud spend from connected source data.</p></div>
+            <label className="period-control">BILLING MONTH<input type="month" value={costPeriod} onChange={event => void changeCostPeriod(event.target.value)} /></label>
+          </div>
+          <div className="dora-grid">
+            <article className="dora-card"><small>Deployment frequency</small><strong>{doraMetrics ? doraMetrics.deploymentFrequencyPerWeek.toFixed(2) + ' / week' : '—'}</strong><span>{doraMetrics?.sampleSizes.successfulDeployments ?? 0} successful deployments</span></article>
+            <article className="dora-card"><small>Median lead time</small><strong>{doraMetrics?.leadTimeForChangesHours === null || !doraMetrics ? 'No data' : doraMetrics.leadTimeForChangesHours.toFixed(1) + ' h'}</strong><span>{doraMetrics?.sampleSizes.leadTimeSamples ?? 0} SHA-matched samples</span></article>
+            <article className="dora-card"><small>Change failure rate</small><strong>{doraMetrics?.changeFailureRatePercent === null || !doraMetrics ? 'No data' : doraMetrics.changeFailureRatePercent.toFixed(1) + '%'}</strong><span>{doraMetrics?.sampleSizes.deploymentAttempts ?? 0} deployment attempts</span></article>
+            <article className="dora-card"><small>Mean time to restore</small><strong>{doraMetrics?.meanTimeToRestoreHours === null || !doraMetrics ? 'No data' : doraMetrics.meanTimeToRestoreHours.toFixed(1) + ' h'}</strong><span>{doraMetrics?.sampleSizes.resolvedIncidents ?? 0} resolved incidents</span></article>
+          </div>
+          <p className="fine-print">{doraMetrics?.limitations[0] ?? 'DORA metrics require connected GitHub repositories and webhook data.'}</p>
+          <div className="finops-summary">
+            <div><p className="eyebrow">CLOUD COST ALLOCATION</p><h3>{costSummary?.recordCount ?? 0} cost line item(s)</h3></div>
+            <div className="cost-total-list">{costSummary?.totalsByCurrency.length ? costSummary.totalsByCurrency.map(item => <strong key={item.currency}>{item.amount.toFixed(2)} <small>{item.currency}</small></strong>) : <span className="muted">No cost records for this month.</span>}</div>
+          </div>
+          {costSummary && costSummary.byService.length > 0 && <div className="cost-service-list">
+            {costSummary.byService.map(item => <div className="cost-service-row" key={(item.serviceId ?? 'unallocated') + item.currency}><span>{item.serviceName}</span><strong>{item.amount.toFixed(2)} {item.currency}</strong></div>)}
+          </div>}
+          <p className="fine-print">{costSummary?.note ?? 'Currencies are reported separately; no FX conversion is applied.'}</p>
+          <div className="finops-lower">
+            <div className="finops-budget-column">
+              <div className="catalog-toolbar"><div><p className="eyebrow">SPEND CONTROLS</p><h3>Monthly budgets</h3></div>{identity.role === 'ADMIN' && <button className="quiet-button" disabled={busy} onClick={() => void evaluateCostBudgets()}>Evaluate thresholds</button>}</div>
+              {costBudgets.length === 0 ? <p className="team-empty">No budgets configured yet.</p> : <div className="budget-list">{costBudgets.map(budget => <article className="budget-row" key={budget.id}>
+                <div className="budget-heading"><strong>{budget.name}</strong><span>{budget.service?.name ?? 'Workspace-wide'}</span></div>
+                <div className="budget-values"><strong>{budget.actualAmount.toFixed(2)} {budget.currency}</strong><span>of {budget.amount.toFixed(2)} · {budget.utilizationPercent === null ? 'No data' : budget.utilizationPercent.toFixed(1) + '%'}</span></div>
+                <div className="budget-track"><span style={{ width: Math.min(100, budget.utilizationPercent ?? 0) + '%' }} /></div>
+                <small>{budget.recordCount} record(s) · alert at {budget.thresholdPercent}%</small>
+              </article>)}</div>}
+              {identity.role === 'ADMIN' && <form className="team-form" onSubmit={createCostBudget}>
+                <p className="eyebrow">NEW BUDGET</p>
+                <label>Budget name<input required minLength={3} maxLength={120} value={budgetForm.name} onChange={event => setBudgetForm({ ...budgetForm, name: event.target.value })} placeholder="Production cloud spend" /></label>
+                <div className="budget-form-grid">
+                  <label>Amount<input type="number" min="0.000001" step="0.000001" required value={budgetForm.amount} onChange={event => setBudgetForm({ ...budgetForm, amount: event.target.value })} /></label>
+                  <label>Currency<input required maxLength={3} minLength={3} value={budgetForm.currency} onChange={event => setBudgetForm({ ...budgetForm, currency: event.target.value })} /></label>
+                  <label>Alert threshold %<input type="number" min="1" max="1000" required value={budgetForm.thresholdPercent} onChange={event => setBudgetForm({ ...budgetForm, thresholdPercent: event.target.value })} /></label>
+                </div>
+                <label>Scope<select value={budgetForm.serviceId} onChange={event => setBudgetForm({ ...budgetForm, serviceId: event.target.value })}><option value="">Entire workspace</option>{services.map(service => <option key={service.id} value={service.id}>{service.name}</option>)}</select></label>
+                <button className="primary-button" disabled={busy}>Create budget</button>
+              </form>}
+            </div>
+            {identity.role === 'ADMIN' && <form className="team-form cost-import-form" onSubmit={importCostRecords}>
+              <p className="eyebrow">NORMALIZED COST IMPORT</p><h3>Import cost records</h3>
+              <label>JSON payload<textarea rows={10} required value={costImportText} onChange={event => setCostImportText(event.target.value)} placeholder={'{"records":[{"provider":"AWS","sourceRecordId":"line-001","resourceId":"i-123","billingPeriodStart":"2026-11-01T00:00:00.000Z","costAmount":12.5,"currency":"USD"}]}'}/></label>
+              <button className="primary-button" disabled={busy || !costImportText.trim()}>Import up to 500 records</button>
+              <p className="fine-print">Provider billing APIs and CSV parsing are not connected. Import normalized JSON exports; duplicate source IDs update existing rows.</p>
+            </form>}
+          </div>
+        </section>
+
+        <section className="team-panel operations-panel">
+          <div className="catalog-toolbar">
+            <div><p className="eyebrow">OPERATIONAL READINESS</p><h2>Runbooks & Escalation</h2><p className="muted">Service-specific response references and on-call contacts.</p></div>
+            <label className="period-control">SERVICE<select value={runbookServiceId} onChange={event => void selectRunbookService(event.target.value)}><option value="">Select service</option>{services.map(service => <option key={service.id} value={service.id}>{service.name}</option>)}</select></label>
+          </div>
+          {!runbookServiceId ? <p className="team-empty">Register a service to configure operational references.</p> : <>
+            <div className="runbook-list">
+              {runbooks.length === 0 ? <p className="team-empty">No runbook references configured for this service.</p> : runbooks.map(runbook => <article className="runbook-row" key={runbook.id}>
+                <div><div className="runbook-title"><strong>{runbook.title}</strong>{runbook.isPrimary && <span className="role-pill admin">PRIMARY</span>}</div><small>{runbook.category}</small><a href={runbook.url} target="_blank" rel="noreferrer">{runbook.url}</a></div>
+                {identity.role === 'ADMIN' && <button className="danger-link" disabled={busy} onClick={() => void deleteRunbook(runbook.id)}>Remove</button>}
+              </article>)}
+            </div>
+            {identity.role === 'ADMIN' && <form className="topology-form runbook-form" onSubmit={createRunbook}>
+              <label>Reference title<input required minLength={3} maxLength={150} value={runbookForm.title} onChange={event => setRunbookForm({ ...runbookForm, title: event.target.value })} placeholder="Payments API recovery" /></label>
+              <label>URL<input type="url" required value={runbookForm.url} onChange={event => setRunbookForm({ ...runbookForm, url: event.target.value })} placeholder="https://docs.example.com/runbooks/payments" /></label>
+              <label>Category<select value={runbookForm.category} onChange={event => setRunbookForm({ ...runbookForm, category: event.target.value })}><option value="RUNBOOK">Runbook</option><option value="PLAYBOOK">Playbook</option><option value="DASHBOARD">Dashboard</option><option value="POSTMORTEM">Postmortem</option></select></label>
+              <label className="inline-check"><input type="checkbox" checked={runbookForm.isPrimary} onChange={event => setRunbookForm({ ...runbookForm, isPrimary: event.target.checked })} /> Set as primary</label>
+              <button className="primary-button" disabled={busy}>Add reference</button>
+            </form>}
+            <div className="policy-section">
+              <div className="catalog-toolbar"><div><p className="eyebrow">ON-CALL POLICY</p><h3>Escalation contacts</h3></div><span className="counter">{escalationPolicy ? 'CONFIGURED' : 'NOT CONFIGURED'}</span></div>
+              {escalationPolicy && <p className="muted">Primary: {escalationPolicy.primaryContactEmail} · Secondary: {escalationPolicy.secondaryContactEmail ?? 'Not set'} · Escalation guidance: {escalationPolicy.escalationAfterMinutes} minutes</p>}
+              {identity.role === 'ADMIN' && <form className="topology-form policy-form" onSubmit={saveEscalationPolicy}>
+                <label>Primary contact<input type="email" required value={policyForm.primaryContactEmail} onChange={event => setPolicyForm({ ...policyForm, primaryContactEmail: event.target.value })} placeholder="primary-oncall@company.com" /></label>
+                <label>Secondary contact<input type="email" value={policyForm.secondaryContactEmail} onChange={event => setPolicyForm({ ...policyForm, secondaryContactEmail: event.target.value })} placeholder="secondary-oncall@company.com" /></label>
+                <label>Escalate after (minutes)<input type="number" min="1" max="1440" required value={policyForm.escalationAfterMinutes} onChange={event => setPolicyForm({ ...policyForm, escalationAfterMinutes: event.target.value })} /></label>
+                <label>On-call URL<input type="url" value={policyForm.onCallUrl} onChange={event => setPolicyForm({ ...policyForm, onCallUrl: event.target.value })} placeholder="https://oncall.example.com" /></label>
+                <button className="primary-button" disabled={busy}>Save policy</button>
+              </form>}
+              <p className="fine-print">Escalation currently records the selected contact in the incident timeline and audit trail. It does not send notifications or run an automatic timer.</p>
+            </div>
+          </>}
+        </section>
+
         <section className="workspace-members">
           <div className="catalog-toolbar"><div><p className="eyebrow">ON-CALL OPERATIONS</p><h2>Incident Management</h2><p className="muted">{incidents.filter(item => item.status !== 'RESOLVED').length} active incident(s) · tenant scoped</p></div><span className="counter">LIVE WORKSPACE DATA</span></div>
           <form className="team-form" onSubmit={createIncident}>
             <h3>Report an incident</h3>
             <label>Incident title<input required minLength={3} maxLength={160} value={incidentForm.title} onChange={event => setIncidentForm({ ...incidentForm, title: event.target.value })} placeholder="Elevated API latency" /></label>
             <label>Incident description<textarea maxLength={5000} rows={2} value={incidentForm.description} onChange={event => setIncidentForm({ ...incidentForm, description: event.target.value })} placeholder="Impact, symptoms and context" /></label>
+            <label>Service<select value={incidentForm.serviceId} onChange={event => setIncidentForm({ ...incidentForm, serviceId: event.target.value })}><option value="">Not linked</option>{services.map(service => <option key={service.id} value={service.id}>{service.name}</option>)}</select></label>
             <label>Severity<select value={incidentForm.severity} onChange={event => setIncidentForm({ ...incidentForm, severity: event.target.value as Incident['severity'] })}><option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option></select></label>
             <label>Assign to<select value={incidentForm.assignedToUserId} onChange={event => setIncidentForm({ ...incidentForm, assignedToUserId: event.target.value })}><option value="">Unassigned</option>{members.map(member => <option key={member.user.id} value={member.user.id}>{member.user.name}</option>)}</select></label>
             <button className="primary-button" disabled={busy}>Create incident →</button>
@@ -434,10 +679,10 @@ export default function Home() {
           {incidents.length === 0 ? <div className="empty-state"><h3>No incidents reported</h3><p>New incidents and their lifecycle events will appear here.</p></div> : <div className="service-list">
             {incidents.map(incident => <article className="service-row" key={incident.id}>
               <div className="service-symbol">!</div><div className="service-info"><div className="service-title-line"><h3>{incident.title}</h3><span className="lifecycle">{incident.severity} · {incident.status}</span></div>
-                <p>{incident.description || 'No description provided'}</p><span className="service-owner">Assignee: {incident.assignee?.name ?? 'Unassigned'} · {new Date(incident.createdAt).toLocaleString()}</span>
+                <p>{incident.description || 'No description provided'}</p><span className="service-owner">Service: {incident.service?.name ?? 'Not linked'} · Assignee: {incident.assignee?.name ?? 'Unassigned'} · Escalation L{incident.escalationLevel ?? 0} · {new Date(incident.createdAt).toLocaleString()}</span>
                 <div className="fine-print">{incident.events.map(item => <p key={item.id}>{item.eventType}: {item.message} · {new Date(item.createdAt).toLocaleString()}</p>)}</div>
               </div>
-              <div className="service-actions">{incident.status === 'OPEN' && <button disabled={busy} onClick={() => updateIncident(incident.id, 'acknowledge')}>Acknowledge</button>}{incident.status !== 'RESOLVED' && <button className="danger-link" disabled={busy} onClick={() => updateIncident(incident.id, 'resolve')}>Resolve</button>}</div>
+              <div className="service-actions">{incident.status !== 'RESOLVED' && incident.serviceId && <button disabled={busy} onClick={() => void escalateIncident(incident.id)}>Escalate</button>}{incident.status === 'OPEN' && <button disabled={busy} onClick={() => updateIncident(incident.id, 'acknowledge')}>Acknowledge</button>}{incident.status !== 'RESOLVED' && <button className="danger-link" disabled={busy} onClick={() => updateIncident(incident.id, 'resolve')}>Resolve</button>}</div>
             </article>)}
           </div>}
           {identity.role === 'ADMIN' && <div className="catalog-main"><div className="catalog-toolbar"><div><h2>Audit Trail</h2><p className="muted">Recent privileged and incident operations</p></div><span className="counter">ADMIN ONLY</span></div>
