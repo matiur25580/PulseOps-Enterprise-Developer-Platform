@@ -42,6 +42,8 @@ jobs:
           node-version: 20
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
+      - name: Verify PostgreSQL backup integrity tooling
+        run: bash scripts/test-postgres-backup-verify.sh
       - name: Generate Prisma Client
         run: pnpm db:generate
       - name: Validate Prisma schema
