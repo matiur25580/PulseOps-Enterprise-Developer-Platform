@@ -14,12 +14,15 @@ Roadmap items are targets, not completed features. Each phase should produce a d
 - [x] PostgreSQL data model and migrations.
 - [x] Tenant-aware Service Catalog CRUD with JWT authentication and workspace isolation.
 - [x] Tenant-scoped Team Management API (CRUD).
+- [x] Workspace member directory, one-time invitations, revocation, role updates, and membership removal API.
+- [x] API-enforced ADMIN/MEMBER RBAC with live membership revalidation and last-admin protection.
 - [x] API unit tests for tenant isolation and cross-tenant resource access, executed in CI.
 - [ ] Apply migrations against a running local database and verify readiness.
 - [ ] API end-to-end tests against PostgreSQL and browser-level UI tests.
 
 ## Phase 2 — Operational workflows
-- [ ] Service ownership and dependency graph.
+- [x] Service ownership assignment in the workspace UI.
+- [ ] Service dependency graph.
 - [ ] Incident lifecycle and append-only timeline.
 - [ ] Runbook references and escalation metadata.
 - [ ] Audit events for privileged operations.
