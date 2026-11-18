@@ -120,6 +120,27 @@ describe('PostgreSQL auth → team → service workflow', () => {
     }
   });
 
+  it('invites a member, enforces live RBAC, and revokes removed member access', async () => {
+    const memberEmail = 'member-' + suffix + '@pulseops.test';
+    const invitation = await request(app.getHttpServer()).post('/api/v1/members/invitations').set('Authorization', 'Bearer ' + token).send({ email: memberEmail }).expect(201);
+    expect(invitation.body.invitation.role).toBe('MEMBER');
+    expect(invitation.body.acceptanceToken).toHaveLength(64);
+    const accepted = await request(app.getHttpServer()).post('/api/v1/auth/accept-invitation').send({ name: 'Invited Member', email: memberEmail, password, token: invitation.body.acceptanceToken }).expect(201);
+    const memberToken = accepted.body.accessToken;
+    const members = await request(app.getHttpServer()).get('/api/v1/members').set('Authorization', 'Bearer ' + token).expect(200);
+    expect(members.body.find((row: { user: { email: string } }) => row.user.email === memberEmail)?.role).toBe('MEMBER');
+    await request(app.getHttpServer()).get('/api/v1/teams').set('Authorization', 'Bearer ' + memberToken).expect(200);
+    await request(app.getHttpServer()).post('/api/v1/teams').set('Authorization', 'Bearer ' + memberToken).send({ name: 'Member Forbidden Team' }).expect(403);
+    await request(app.getHttpServer()).patch('/api/v1/members/' + accepted.body.user.id + '/role').set('Authorization', 'Bearer ' + token).send({ role: 'ADMIN' }).expect(200);
+    await request(app.getHttpServer()).post('/api/v1/teams').set('Authorization', 'Bearer ' + memberToken).send({ name: 'Delegated Admin Team' }).expect(201);
+    await request(app.getHttpServer()).patch('/api/v1/members/' + accepted.body.user.id + '/role').set('Authorization', 'Bearer ' + token).send({ role: 'MEMBER' }).expect(200);
+    await request(app.getHttpServer()).post('/api/v1/teams').set('Authorization', 'Bearer ' + memberToken).send({ name: 'Role Downgrade Forbidden Team' }).expect(403);
+    await request(app.getHttpServer()).delete('/api/v1/members/' + accepted.body.user.id).set('Authorization', 'Bearer ' + token).expect(200);
+    await request(app.getHttpServer()).get('/api/v1/teams').set('Authorization', 'Bearer ' + memberToken).expect(401);
+    await request(app.getHttpServer()).post('/api/v1/auth/accept-invitation').send({ name: 'Invited Member', email: memberEmail, password, token: invitation.body.acceptanceToken }).expect(401);
+    await prisma.user.deleteMany({ where: { email: memberEmail } });
+  });
+
   it('keeps tenant scope on team and service lists', async () => {
     const teams = await request(app.getHttpServer())
       .get('/api/v1/teams')
