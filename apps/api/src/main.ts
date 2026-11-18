@@ -12,6 +12,9 @@ async function bootstrap(): Promise<void> {
   if (process.env.NODE_ENV === 'production' && !process.env.METRICS_TOKEN) {
     throw new Error('METRICS_TOKEN is required in production to protect the metrics endpoint');
   }
+  if (process.env.NODE_ENV === 'production' && !process.env.WEB_ORIGIN) {
+    throw new Error('WEB_ORIGIN is required in production; configure the deployed frontend origin');
+  }
   const app = await NestFactory.create(AppModule, { rawBody: true });
   app.enableCors({ origin: process.env.WEB_ORIGIN ?? 'http://localhost:3000', credentials: true });
   app.setGlobalPrefix('api/v1');
