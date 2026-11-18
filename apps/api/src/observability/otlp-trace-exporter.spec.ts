@@ -26,6 +26,7 @@ describe('OtlpTraceExporter', () => {
       startTimeUnixNano: '1000000',
       endTimeUnixNano: '2000000',
       statusCode: 200,
+      traceFlags: '01',
       attributes: [{ key: 'http.request.method', value: { stringValue: 'GET' } }],
     });
 
@@ -42,6 +43,7 @@ describe('OtlpTraceExporter', () => {
       spanId: '0123456789abcdef',
       parentSpanId: 'abcdef0123456789',
       name: 'GET /health',
+      flags: 1,
     }));
   });
 
