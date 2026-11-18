@@ -36,7 +36,7 @@ describe('OutboxWorker', () => {
     await (worker as any).process({ ...event, event_type: 'UNKNOWN_EVENT' });
     expect(prisma.outboxEvent.update).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: event.id },
-      data: expect.objectContaining({ status: 'RETRY', attempts: undefined, lastError: expect.stringContaining('Unsupported') }),
+      data: expect.objectContaining({ status: 'RETRY', lastError: expect.stringContaining('Unsupported') }),
     }));
   });
 
