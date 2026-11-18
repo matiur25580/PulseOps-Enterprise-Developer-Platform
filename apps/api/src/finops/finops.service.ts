@@ -38,7 +38,7 @@ export class FinopsService {
         count += 1;
       }
       return count;
-    }, { timeout: 15000 });
+    }, { timeout: 30000 });
     await this.audit.record({ tenantId, actorId, action: 'CLOUD_COSTS_IMPORTED', entityType: 'COST_IMPORT', metadata: { recordsProcessed: imported } });
     return { recordsProcessed: imported, idempotency: 'tenant + provider + sourceRecordId' };
   }
