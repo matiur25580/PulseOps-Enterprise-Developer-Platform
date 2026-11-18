@@ -22,6 +22,31 @@ test('workspace owner can register, create, edit and delete a service, then sign
   await page.getByLabel('Team contact email').fill('platform-browser@pulseops.test');
   await page.getByRole('button', { name: /Create team/ }).click();
   await expect(page.getByText('Browser Platform Team')).toBeVisible();
+
+  const memberEmail = `member-browser-${suffix}@pulseops.test`;
+  await page.getByLabel('Work email').fill(memberEmail);
+  await page.getByRole('button', { name: /Create invitation/ }).click();
+  const acceptanceToken = await page.locator('.invite-token code').innerText();
+  expect(acceptanceToken).toHaveLength(64);
+
+  const memberPage = await page.context().newPage();
+  await memberPage.goto('/accept-invitation');
+  await memberPage.getByLabel('Your name').fill('Browser Invited Member');
+  await memberPage.getByLabel('Invited email').fill(memberEmail);
+  await memberPage.getByLabel(/Password/).fill('Member-Browser-Password-2026!');
+  await memberPage.getByLabel('One-time invitation token').fill(acceptanceToken);
+  await memberPage.getByRole('button', { name: /Accept invitation/ }).click();
+  await expect(memberPage.getByRole('heading', { name: /You're in/ })).toBeVisible();
+  await memberPage.getByRole('link', { name: /Continue to sign in/ }).click();
+  await memberPage.getByRole('button', { name: 'Sign in' }).click();
+  await memberPage.getByLabel('Email address').fill(memberEmail);
+  await memberPage.getByLabel('Password').fill('Member-Browser-Password-2026!');
+  await memberPage.getByLabel('Workspace slug').fill(tenantSlug);
+  await memberPage.getByRole('button', { name: /Sign in/ }).last().click();
+  await expect(memberPage.getByRole('heading', { name: 'Workspace members' })).toBeVisible();
+  await expect(memberPage.getByRole('button', { name: /Create team/ })).toHaveCount(0);
+  await expect(memberPage.getByRole('button', { name: /Create invitation/ })).toHaveCount(0);
+  await memberPage.close();
   await page.getByLabel('Service name').fill('Browser Payments API');
   await page.getByLabel('Owning team').selectOption({ label: 'Browser Platform Team' });
   await page.getByLabel('Slug').fill(`browser-payments-${suffix}`);
