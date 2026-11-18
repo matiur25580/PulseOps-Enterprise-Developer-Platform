@@ -121,7 +121,7 @@ model Service {
   sloDefinitions SloDefinition[]
   githubRepositories GitHubRepositoryIntegration[]
   runbooks RunbookReference[]
-  escalationPolicy EscalationPolicy?
+  escalationPolicies EscalationPolicy[]
   incidents Incident[]
 
   @@unique([tenantId, slug])
