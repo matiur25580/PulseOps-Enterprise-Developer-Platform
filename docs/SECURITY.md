@@ -31,7 +31,7 @@ PulseOps handles operational metadata and potentially sensitive infrastructure c
 - Keep dependencies patched and scan changes in CI.
 
 ## Implemented authentication and tenant isolation
-- Passwords are stored as bcrypt hashes (cost factor 12); access tokens are signed JWTs with a one-hour expiry.
+- Passwords are stored as bcrypt hashes (cost factor 12); access tokens are signed JWTs with a 15-minute expiry and an active database-backed session ID.
 - Production startup requires `JWT_SECRET`; registration creates a workspace and ADMIN membership transactionally.
 - Service, Team, Member, Incident, and Audit controllers require verified bearer tokens. Tenant scope comes from the token, not a request header or body.
 - The JWT guard revalidates workspace membership and current role from PostgreSQL on every request. Removed members lose access immediately; role changes apply to already-issued tokens.

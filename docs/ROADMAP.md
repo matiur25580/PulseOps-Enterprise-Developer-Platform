@@ -16,7 +16,7 @@ Roadmap items are targets, not completed features. Each phase should produce a d
 - [x] Tenant-scoped Team Management API (CRUD).
 - [x] Workspace member directory, one-time invitations, revocation, role updates, and membership removal API.
 - [x] API-enforced ADMIN/MEMBER RBAC with live membership revalidation and last-admin protection.
-- [x] 15-minute access tokens, hashed rotating refresh sessions, replay-family revocation, session inventory/revocation, and database-backed authentication rate limits.
+- [x] 15-minute access tokens, hashed rotating refresh sessions, replay-family revocation, session inventory/individual and global revocation, and database-backed authentication rate limits.
 - [x] API unit tests for tenant isolation and cross-tenant resource access, executed in CI.
 - [ ] Apply migrations against a running local database and verify readiness.
 - [x] API integration tests against PostgreSQL and browser-level UI tests.

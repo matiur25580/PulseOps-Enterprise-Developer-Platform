@@ -32,7 +32,7 @@ These are implemented foundations, not proof that every external integration or 
 
 ## Phase 1 — Security, identity, and tenant governance
 
-- [ ] Replace long-lived stateless access-only sessions with short-lived access tokens and securely stored, rotating, revocable refresh sessions.
+- [x] Replace long-lived stateless access-only sessions with 15-minute access tokens and securely stored, rotating, revocable refresh sessions (refresh-token hashes, replay-family revocation, session inventory, and remote logout are implemented).
 - [ ] Login and registration abuse protection: distributed rate limits, brute-force controls, safe error messages, and abuse telemetry.
 - [ ] Email verification and password reset using expiring, single-use, hashed tokens.
 - [ ] Invitation email delivery with provider adapters, retry/outbox handling, expiry, revocation, and delivery status.
@@ -43,7 +43,8 @@ These are implemented foundations, not proof that every external integration or 
 - [ ] Enterprise SAML 2.0 and OIDC federation, domain discovery, and workspace-managed identity policies.
 - [ ] MFA enforcement via identity provider; privileged-action re-authentication.
 - [ ] SCIM 2.0 user/group provisioning and deprovisioning with replay-safe operations.
-- [ ] Session/device inventory, remote logout, suspicious-login notifications, and security event history.
+- [x] Session inventory and remote logout, including individual-session and revoke-all flows.
+- [ ] Suspicious-login notifications and expanded security event history.
 - [ ] Tamper-evident audit export/retention and privileged-access review.
 
 ## Phase 2 — Observability and alerting platform
@@ -95,7 +96,8 @@ These are implemented foundations, not proof that every external integration or 
 - [ ] Organization-wide policies, policy-as-code checks, and exception workflows.
 - [ ] Data retention, export, deletion, residency, and legal hold controls.
 - [ ] Compliance evidence collection, access reviews, and control mapping for SOC 2/ISO 27001 readiness (not certification).
-- [ ] Backup verification, restore drills, disaster recovery objectives, and recovery runbooks.
+- [x] PostgreSQL backup integrity tooling (custom-format archive validation, TOC verification, and SHA-256 checksums) plus a documented recovery runbook.
+- [ ] Real external backup execution, independently stored backup copies, restore drills, and measured disaster recovery objectives.
 - [ ] Multi-region architecture only after measured demand and a funded operational model.
 
 ## Phase 6 — AI-assisted operations
