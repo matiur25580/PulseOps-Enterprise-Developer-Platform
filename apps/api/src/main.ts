@@ -18,6 +18,7 @@ async function bootstrap(): Promise<void> {
   }
   const app = await NestFactory.create(AppModule, { rawBody: true });
   app.getHttpAdapter().getInstance().disable('x-powered-by');
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
   app.use(securityHeadersMiddleware);
   app.enableCors({ origin: process.env.WEB_ORIGIN ?? 'http://localhost:3000', credentials: true });
   app.setGlobalPrefix('api/v1');

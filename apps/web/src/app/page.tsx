@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 
 type Service = {
   id: string; name: string; slug: string; description: string | null;
@@ -49,6 +49,7 @@ const emptyTeam = { name: '', email: '' };
 async function apiRequest<T>(path: string, token?: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API}${path}`, {
     ...init,
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init.headers },
   });
   const payload = await response.json().catch(() => ({}));
@@ -95,6 +96,44 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch(`${API}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) return;
+        const payload = await response.json() as AuthPayload;
+        if (!active) return;
+        setToken(payload.accessToken);
+        setIdentity(payload);
+        await refreshWorkspace(payload.accessToken, payload.role);
+      } catch { /* no active refresh session; show the sign-in screen */ }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`${API}/auth/refresh`, { method: 'POST', credentials: 'include' });
+        if (!response.ok) throw new Error('Session expired. Please sign in again.');
+        const payload = await response.json() as { accessToken: string };
+        setToken(payload.accessToken);
+      } catch (err) {
+        setToken('');
+        setIdentity(null);
+        setError(err instanceof Error ? err.message : 'Session expired. Please sign in again.');
+      }
+    }, 14 * 60 * 1000);
+    return () => window.clearTimeout(timer);
+  }, [token]);
+
 
   async function refreshServiceOperations(accessToken: string, serviceId: string) {
     setRunbookServiceId(serviceId);
@@ -425,7 +464,8 @@ export default function Home() {
     setError(''); setNotice('');
   }
 
-  function signOut() {
+  async function signOut() {
+    try { await apiRequest('/auth/logout', undefined, { method: 'POST' }); } catch { /* local sign-out must still complete */ }
     setToken(''); setIdentity(null); setServices([]); setTeams([]); setMembers([]); setIncidents([]); setAuditLogs([]); setDependencies([]); setSlos([]); setRunbookServiceId(''); setRunbooks([]); setEscalationPolicy(null); setCostSummary(null); setCostBudgets([]); setDoraMetrics(null);
     setInviteToken(''); setEditingId(null); setEditingTeamId(null);
     setServiceForm(emptyService); setTeamForm(emptyTeam); setNotice('Signed out.');
@@ -461,7 +501,7 @@ export default function Home() {
                 : <label>Workspace slug<input required value={authForm.tenantSlug} onChange={event => setAuthForm({ ...authForm, tenantSlug: event.target.value })} placeholder="platform-engineering-a1b2c3d4" /></label>}
               <button className="primary-button" disabled={busy}>{busy ? 'Please wait…' : mode === 'register' ? 'Create workspace →' : 'Sign in →'}</button>
             </form>
-            <p className="fine-print">Access tokens stay in page memory and expire after one hour. Refreshing the page signs you out.</p>
+            <p className="fine-print">Access tokens expire after 15 minutes and renew automatically. Refreshing the page restores your session when the secure refresh cookie is available.</p>
             <p className="fine-print">Received an invitation? <a href="/accept-invitation">Accept workspace invitation →</a></p>
           </section>
         </section>

@@ -28,6 +28,7 @@ model Tenant {
   teams       Team[]
   services    Service[]
   memberships TenantMembership[]
+  authSessions AuthSession[]
   invitations WorkspaceInvitation[]
   auditLogs   AuditLog[]
   incidents   Incident[]
@@ -51,6 +52,7 @@ model User {
   createdAt    DateTime           @default(now()) @map("created_at")
   updatedAt    DateTime           @updatedAt @map("updated_at")
   memberships  TenantMembership[]
+  authSessions AuthSession[]
   auditLogs     AuditLog[]       @relation("AuditActor")
   assignedIncidents Incident[]   @relation("IncidentAssignee")
   incidentEvents IncidentEvent[] @relation("IncidentEventActor")
@@ -498,4 +500,31 @@ model CostBudgetEvent {
   @@unique([budgetId, periodStart, thresholdPercent])
   @@index([budgetId, createdAt])
   @@map("cost_budget_events")
+}
+
+model AuthSession {
+ id String @id @default(uuid()) @db.Uuid
+ userId String @map("user_id") @db.Uuid
+ tenantId String @map("tenant_id") @db.Uuid
+ familyId String @map("family_id") @db.Uuid
+ tokenHash String @unique @map("token_hash")
+ expiresAt DateTime @map("expires_at")
+ revokedAt DateTime? @map("revoked_at")
+ replacedById String? @map("replaced_by_id") @db.Uuid
+ createdAt DateTime @default(now()) @map("created_at")
+ lastUsedAt DateTime? @map("last_used_at")
+ user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+ @@index([userId, tenantId, revokedAt])
+ @@index([familyId])
+ @@index([expiresAt])
+ @@map("auth_sessions")
+}
+model AuthRateLimitBucket {
+ key String @id @db.VarChar(64)
+ windowStartedAt DateTime @map("window_started_at")
+ requestCount Int @default(0) @map("request_count")
+ blockedUntil DateTime? @map("blocked_until")
+ @@index([windowStartedAt])
+ @@map("auth_rate_limit_buckets")
 }

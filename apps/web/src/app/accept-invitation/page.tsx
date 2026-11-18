@@ -8,7 +8,7 @@ export default function AcceptInvitationPage(){
  async function submit(event:FormEvent<HTMLFormElement>){
   event.preventDefault();setBusy(true);setError('');
   try{
-   const response=await fetch(API+'/auth/accept-invitation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
+   const response=await fetch(API+'/auth/accept-invitation',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});
    const result=await response.json().catch(()=>({}));
    if(!response.ok){const message=result.message;throw new Error(Array.isArray(message)?message.join(', '):message||'Invitation could not be accepted')}
    setAccepted(result);

@@ -55,8 +55,16 @@ PulseOps handles operational metadata and potentially sensitive infrastructure c
 - Production requires a unique `JWT_SECRET` of at least 32 characters. The known development fallback is available only outside production.
 - Generate a production secret locally with `openssl rand -base64 48` and store it only in the hosting provider's secret manager. Never commit it or paste it into chat.
 
+## Session and authentication hardening
+- Access JWTs expire after 15 minutes and include a session ID; each protected request revalidates workspace membership and an active, unexpired session in PostgreSQL.
+- Refresh credentials are random opaque tokens; only SHA-256 hashes are stored. The raw token is issued as an HttpOnly cookie scoped to `/api/v1/auth`.
+- Refresh rotates tokens transactionally. Reuse of a rotated token revokes its token family. Logout, logout-all, session inventory, and per-session revocation are supported.
+- Register, login, and refresh use database-backed fixed-window rate limits shared across API instances.
+- Production cookies use Secure, HttpOnly, SameSite=None. Default Vercel and Render hostnames are cross-site and browser privacy settings may block third-party cookies; a same-site custom domain or first-party auth proxy is recommended.
+- Existing access tokens without a session ID must be replaced by signing in again after deployment.
+
 ## Remaining production hardening
-Invitation email delivery, email verification, refresh-token rotation/revocation, login/register rate limiting, password reset, managed secrets, security headers, and external security review remain outstanding. Treat this as an application foundation, not a production security certification.
+Invitation email delivery, email verification, password reset, managed secrets, and external security review remain outstanding. Treat this as an application foundation, not a production security certification.
 
 
 ## GitHub webhook security

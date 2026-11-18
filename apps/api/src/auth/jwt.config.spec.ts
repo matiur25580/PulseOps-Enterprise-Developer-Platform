@@ -31,6 +31,6 @@ describe('getJwtModuleOptions', () => {
     const secret = 'a-random-production-secret-with-more-than-32-characters';
     const options = getJwtModuleOptions({ NODE_ENV: 'production', JWT_SECRET: secret });
     expect(options.secret).toBe(secret);
-    expect(options.signOptions.expiresIn).toBe('1h');
+    expect(options.signOptions.expiresIn).toBe('15m');
   });
 });
