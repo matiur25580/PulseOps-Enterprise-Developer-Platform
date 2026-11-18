@@ -46,6 +46,7 @@ PulseOps has CI-backed application code and a versioned Prisma migration, but no
 - Web: Vercel Next.js project rooted at `apps/web`.
 
 API environment:
+- `NODE_ENV=production`: enables production-only startup security checks.
 - `DATABASE_URL`: managed PostgreSQL connection string (use the provider's internal/private URL where possible).
 - `JWT_SECRET`: long, random, unique production secret.
 - `WEB_ORIGIN`: exact deployed web origin.
