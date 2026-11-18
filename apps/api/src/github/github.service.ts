@@ -117,8 +117,8 @@ export class GitHubService {
         select: { createdAt: true, resolvedAt: true },
       }),
     ]);
-    const successful = deployments.filter(item => item.state === 'success' && item.deployedAt);
-    const failed = deployments.filter(item => ['failure', 'error', 'inactive'].includes(item.state));
+    const successful = deployments.filter(item => ['success', 'inactive'].includes(item.state) && item.deployedAt);
+    const failed = deployments.filter(item => ['failure', 'error'].includes(item.state));
     const mergeBySha = new Map<string, Date>();
     for (const pr of pullRequests) {
       if (pr.mergeCommitSha && pr.mergedAt) mergeBySha.set(pr.integrationId + ':' + pr.mergeCommitSha, pr.mergedAt);
@@ -197,17 +197,21 @@ export class GitHubService {
     if (!deploymentId || !statusId || Number.isNaN(updatedAt.getTime()) || typeof deployment.sha !== 'string') {
       throw new BadRequestException('Invalid deployment status payload');
     }
+    const where = { integrationId_githubDeploymentId: { integrationId, githubDeploymentId: deploymentId } };
+    const existing = await tx.deploymentRecord.findUnique({ where });
+    // GitHub may retry or deliver status updates out of order; never roll a deployment backwards in time.
+    if (existing && existing.statusUpdatedAt > updatedAt) return;
+    const deployedAt = state === 'success' ? updatedAt : state === 'inactive' ? existing?.deployedAt ?? null : null;
     await tx.deploymentRecord.upsert({
-      where: { integrationId_githubDeploymentId: { integrationId, githubDeploymentId: deploymentId } },
+      where,
       create: {
         integrationId, githubDeploymentId: deploymentId, statusId, sha: deployment.sha,
         ref: String(deployment.ref || ''), environment: String(deployment.environment || 'unknown'),
-        state, deployedAt: state === 'success' ? updatedAt : null, statusUpdatedAt: updatedAt,
+        state, deployedAt, statusUpdatedAt: updatedAt,
       },
       update: {
         statusId, sha: deployment.sha, ref: String(deployment.ref || ''),
-        environment: String(deployment.environment || 'unknown'), state,
-        deployedAt: state === 'success' ? updatedAt : null, statusUpdatedAt: updatedAt,
+        environment: String(deployment.environment || 'unknown'), state, deployedAt, statusUpdatedAt: updatedAt,
       },
     });
   }
