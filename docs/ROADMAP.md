@@ -37,7 +37,8 @@ Roadmap items are targets, not completed features. Each phase should produce a d
 ## Phase 4 — Delivery and FinOps
 - [x] GitHub repository webhook ingestion for merged pull requests and deployment statuses (manual webhook configuration; no GitHub App OAuth).
 - [x] Tenant-scoped normalized cloud cost import and service allocation (provider API/CSV adapters remain outstanding).
-- [x] Monthly workspace/service budgets with manual threshold evaluation and idempotent budget events.\n- [ ] Forecasts and anomaly indicators.
+- [x] Monthly workspace/service budgets with manual threshold evaluation and idempotent budget events.
+- [ ] Forecasts and anomaly indicators.
 - [x] DORA metric calculations with sample sizes and documented definitions (webhook-derived deployment data; lead time matched by merge SHA).
 
 ## Phase 5 — AI-assisted operations
