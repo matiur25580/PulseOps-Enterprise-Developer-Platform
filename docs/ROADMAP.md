@@ -35,10 +35,10 @@ Roadmap items are targets, not completed features. Each phase should produce a d
 - [ ] Alert rules, multi-window burn-rate calculations, and notification integrations.
 
 ## Phase 4 — Delivery and FinOps
-- [ ] Deployment metadata integrations.
+- [x] GitHub repository webhook ingestion for merged pull requests and deployment statuses (manual webhook configuration; no GitHub App OAuth).
 - [ ] Cloud cost import and allocation.
 - [ ] Budgets, forecasts, and anomaly indicators.
-- [ ] DORA metric calculations with documented definitions.
+- [x] DORA metric calculations with sample sizes and documented definitions (webhook-derived deployment data; lead time matched by merge SHA).
 
 ## Phase 5 — AI-assisted operations
 - [ ] Incident summarization with source references.
