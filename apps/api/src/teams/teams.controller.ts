@@ -11,7 +11,7 @@ import { TeamsService } from './teams.service';
 export class TeamsController {
  constructor(private readonly teams:TeamsService){}
  @Get() list(@CurrentUser() user:AuthenticatedUser){return this.teams.list(user.tenantId)}
- @Post() @Roles('ADMIN') create(@CurrentUser() user:AuthenticatedUser,@Body() body:CreateTeamDto){return this.teams.create(user.tenantId,body)}
- @Patch(':id') @Roles('ADMIN') update(@CurrentUser() user:AuthenticatedUser,@Param('id',ParseUUIDPipe) id:string,@Body() body:UpdateTeamDto){return this.teams.update(user.tenantId,id,body)}
- @Delete(':id') @Roles('ADMIN') remove(@CurrentUser() user:AuthenticatedUser,@Param('id',ParseUUIDPipe) id:string){return this.teams.remove(user.tenantId,id)}
+ @Post() @Roles('ADMIN') create(@CurrentUser() user:AuthenticatedUser,@Body() body:CreateTeamDto){return this.teams.create(user.tenantId,user.sub,body)}
+ @Patch(':id') @Roles('ADMIN') update(@CurrentUser() user:AuthenticatedUser,@Param('id',ParseUUIDPipe) id:string,@Body() body:UpdateTeamDto){return this.teams.update(user.tenantId,user.sub,id,body)}
+ @Delete(':id') @Roles('ADMIN') remove(@CurrentUser() user:AuthenticatedUser,@Param('id',ParseUUIDPipe) id:string){return this.teams.remove(user.tenantId,user.sub,id)}
 }
