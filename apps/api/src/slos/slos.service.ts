@@ -37,9 +37,11 @@ export class SlosService {
   }
   private async withStatus<T extends { id: string; indicator: SloIndicator; targetPercent: number; windowDays: number; latencyThresholdMs: number | null }>(slo: T) {
     const since = new Date(Date.now() - slo.windowDays * 24 * 60 * 60 * 1000);
-    const samples = await this.prisma.sliSample.findMany({ where: { sloId: slo.id, observedAt: { gte: since } }, select: { success: true, latencyMs: true } });
-    const good = samples.filter(sample => slo.indicator === 'AVAILABILITY' ? sample.success : sample.success && sample.latencyMs !== null && sample.latencyMs <= (slo.latencyThresholdMs ?? 0)).length;
-    const total = samples.length;
+    const sampleWindow = { sloId: slo.id, observedAt: { gte: since } };
+    const [total, good] = await Promise.all([
+      this.prisma.sliSample.count({ where: sampleWindow }),
+      this.prisma.sliSample.count({ where: { ...sampleWindow, success: true, ...(slo.indicator === 'LATENCY' ? { latencyMs: { lte: slo.latencyThresholdMs ?? 0 } } : {}) } }),
+    ]);
     const sliPercent = total ? (good / total) * 100 : null;
     const allowedBadPercent = 100 - slo.targetPercent;
     const actualBadPercent = total ? 100 - (sliPercent ?? 0) : null;
