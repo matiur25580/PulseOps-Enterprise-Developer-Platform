@@ -14,6 +14,7 @@ describe('Authentication session lifecycle', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
+    app.getHttpAdapter().getInstance().set('trust proxy', 1);
     app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
     await app.init();
@@ -80,5 +81,19 @@ describe('Authentication session lifecycle', () => {
       .send({ email: throttleEmail, password, tenantSlug: registered.body.tenant.slug }).expect(429);
     await prisma.tenant.delete({ where: { id: registered.body.tenant.id } });
     await prisma.user.delete({ where: { email: throttleEmail } });
+  });
+
+  it('blocks password-spraying attempts across different accounts from one IP', async () => {
+    const ip = `198.51.100.${Math.floor(Math.random() * 250) + 1}`;
+    for (let attempt = 0; attempt < 30; attempt++) {
+      await request(app.getHttpServer()).post('/api/v1/auth/login')
+        .set('X-Forwarded-For', ip)
+        .send({ email: `spray-${attempt}-${suffix}@pulseops.test`, password: 'Wrong-Password-2026!', tenantSlug: 'unknown-workspace' })
+        .expect(401);
+    }
+    await request(app.getHttpServer()).post('/api/v1/auth/login')
+      .set('X-Forwarded-For', ip)
+      .send({ email: `spray-final-${suffix}@pulseops.test`, password: 'Wrong-Password-2026!', tenantSlug: 'unknown-workspace' })
+      .expect(429);
   });
 });
