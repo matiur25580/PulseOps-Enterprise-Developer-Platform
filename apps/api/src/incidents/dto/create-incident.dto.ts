@@ -5,4 +5,5 @@ export class CreateIncidentDto {
   @IsOptional() @IsString() @MaxLength(5000) description?: string;
   @IsOptional() @IsEnum(IncidentSeverity) severity?: IncidentSeverity;
   @IsOptional() @IsUUID() assignedToUserId?: string;
+  @IsOptional() @IsUUID() serviceId?: string;
 }
