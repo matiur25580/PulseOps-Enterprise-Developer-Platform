@@ -23,10 +23,10 @@ export class MembersService {
   await this.audit.record({tenantId,actorId:createdByUserId,action:'INVITATION_CREATED',entityType:'WORKSPACE_INVITATION',entityId:invitation.id,metadata:{email,role:'MEMBER'}});
   return {invitation,acceptanceToken:token};
  }
- async revokeInvitation(tenantId:string,id:string){
+ async revokeInvitation(tenantId:string,actorId:string,id:string){
   const result=await this.prisma.workspaceInvitation.updateMany({where:{id,tenantId,acceptedAt:null,revokedAt:null},data:{revokedAt:new Date()}});
   if(!result.count)throw new NotFoundException('Pending invitation not found');
-  await this.audit.record({tenantId,action:'INVITATION_REVOKED',entityType:'WORKSPACE_INVITATION',entityId:id});
+  await this.audit.record({tenantId,actorId,action:'INVITATION_REVOKED',entityType:'WORKSPACE_INVITATION',entityId:id});
   return {revoked:true,id};
  }
  async updateRole(tenantId:string,actorId:string,userId:string,input:UpdateMemberRoleDto){
