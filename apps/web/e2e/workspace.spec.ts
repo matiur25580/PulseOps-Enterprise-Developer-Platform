@@ -63,7 +63,7 @@ test('workspace owner can manage services and members while invited members get 
   await expect(page.getByRole('heading', { name: 'Browser Payments API Updated' })).toBeVisible();
 
   await page.getByLabel('Incident title').fill('Browser API latency');
-  await page.getByLabel('Description', { exact: true }).last().fill('Latency increased after a deployment');
+  await page.getByLabel('Incident description').fill('Latency increased after a deployment');
   await page.getByLabel('Severity').selectOption('HIGH');
   await page.getByRole('button', { name: /Create incident/ }).click();
   const incidentRow = page.locator('.service-row').filter({ has: page.getByRole('heading', { name: 'Browser API latency' }) });
