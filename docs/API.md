@@ -57,3 +57,23 @@ JWTs expire after one hour. Passwords are hashed with bcryptjs (cost factor 12).
 - `POST /auth/accept-invitation`: public invitation acceptance. Body: `{ "name": "New Member", "email": "new.member@example.com", "password": "at-least-12-characters", "token": "<one-time-token>" }`. New accounts are created; existing accounts must provide their current password. The token is single-use and expires after seven days.
 
 ADMIN members can create, update, and delete Teams and Services. MEMBER accounts can read Teams, Services, and the member directory, but write operations return 403. Role changes and membership removal take effect immediately for existing JWTs because the API reloads membership and role from PostgreSQL on every authenticated request. A workspace cannot demote or remove its last ADMIN.
+
+## Service dependency graph
+All endpoints require authentication and are scoped to the caller's workspace.
+- GET /service-dependencies: list directed edges with source and target service details.
+- POST /service-dependencies (ADMIN): body { "sourceServiceId": "<uuid>", "targetServiceId": "<uuid>" }. Both services must belong to the same workspace. Self-edges and cycles are rejected.
+- DELETE /service-dependencies/:id (ADMIN): remove a workspace edge.
+
+## SLI / SLO
+- GET /slos: list workspace objectives with rolling-window measurements.
+- POST /slos/services/:serviceId (ADMIN): create an objective with name, indicator (AVAILABILITY or LATENCY), targetPercent (0.01–100), optional windowDays (1–90, default 30), and latencyThresholdMs (required for LATENCY).
+- POST /slos/:id/samples (ADMIN): record a manual sample with success boolean and latencyMs for latency objectives.
+- DELETE /slos/:id (ADMIN): delete an objective and its samples.
+
+The API calculates measured SLI percentage and remaining error-budget percentage from samples in the configured rolling window. A no-sample objective reports null measurement values. The current data source is MANUAL_API_INGESTION; no production request telemetry is automatically attributed to a service yet.
+
+## Metrics and request telemetry
+- GET /metrics: Prometheus text exposition for per-process HTTP request counters and latency histogram buckets. Set METRICS_TOKEN to require Authorization: Bearer <token>; if unset, the scrape endpoint is unauthenticated and should be restricted at the network/monitoring layer.
+- HTTP responses include x-trace-id. Incoming valid W3C traceparent trace IDs are propagated; otherwise a new trace ID is generated. Structured JSON request events are written to stdout.
+
+Metrics are held in process memory and reset on restart; they are not a durable or horizontally aggregated time series. An OTLP/OpenTelemetry collector, external metrics backend, alerting and service-level telemetry adapters are future integration work.
