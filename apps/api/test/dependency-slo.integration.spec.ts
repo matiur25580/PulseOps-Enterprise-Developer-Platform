@@ -44,10 +44,25 @@ describe('Service graph, SLO and observability (PostgreSQL)', () => {
       .send({ success: true }).expect(201);
     await request(app.getHttpServer()).post(`/api/v1/slos/${slo.body.id}/samples`).set(headers)
       .send({ success: false }).expect(201);
+    await request(app.getHttpServer()).post(`/api/v1/slos/services/${first.body.id}`).set(headers)
+      .send({ name: 'Invalid availability SLO', indicator: 'AVAILABILITY', targetPercent: 99.9, latencyThresholdMs: 300 }).expect(400);
+    const latencySlo = await request(app.getHttpServer()).post(`/api/v1/slos/services/${first.body.id}`).set(headers)
+      .send({ name: 'Gateway latency', indicator: 'LATENCY', targetPercent: 99, latencyThresholdMs: 300 }).expect(201);
+    await request(app.getHttpServer()).post(`/api/v1/slos/${latencySlo.body.id}/samples`).set(headers)
+      .send({ success: true }).expect(400);
+    await request(app.getHttpServer()).post(`/api/v1/slos/${latencySlo.body.id}/samples`).set(headers)
+      .send({ success: true, latencyMs: 250 }).expect(201);
+    await request(app.getHttpServer()).post(`/api/v1/slos/${latencySlo.body.id}/samples`).set(headers)
+      .send({ success: true, latencyMs: 500 }).expect(201);
     const slos = await request(app.getHttpServer()).get('/api/v1/slos').set(headers).expect(200);
     expect(slos.body[0].measurement.sampleCount).toBe(2);
     expect(slos.body[0].measurement.sliPercent).toBe(50);
-    expect(slos.body[0].measurement.errorBudgetRemainingPercent).toBe(0);
+    const availabilityResult = slos.body.find((row: { id: string }) => row.id === slo.body.id);
+    expect(availabilityResult.measurement.errorBudgetRemainingPercent).toBe(0);
+    const latencyResult = slos.body.find((row: { id: string }) => row.id === latencySlo.body.id);
+    expect(latencyResult.measurement.sampleCount).toBe(2);
+    expect(latencyResult.measurement.sliPercent).toBe(50);
+    expect(latencyResult.measurement.errorBudgetRemainingPercent).toBe(0);
     await request(app.getHttpServer()).get('/api/v1/metrics').expect(200)
       .expect(response => expect(response.text).toContain('pulseops_http_requests_total'));
     const audit = await prisma.auditLog.findMany({ where: { tenantId }, select: { action: true } });
