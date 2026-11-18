@@ -49,3 +49,10 @@ This is an initial logical data model. It is not yet an implemented Prisma schem
 ## Data lifecycle
 
 Define retention periods for audit events, incident payloads, telemetry references, and AI prompts/responses before production use. Avoid storing secrets or unnecessary personal data in event payloads.
+
+
+## Runbooks and escalation
+- `runbook_references` stores tenant- and service-scoped external runbook/playbook/dashboard/postmortem URLs. A partial unique index enforces one primary runbook per service.
+- `escalation_policies` stores the primary/secondary contact addresses, escalation interval guidance, optional on-call URL and operator notes for each service.
+- `incidents.service_id` optionally links an incident to a service. `escalation_level` and `escalated_at` record manual escalation progression. Incident events and audit logs capture the selected escalation target.
+- Runbook references and escalation policies cascade with their owning tenant/service. Incident service references are cleared when the service is deleted.

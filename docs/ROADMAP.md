@@ -24,7 +24,7 @@ Roadmap items are targets, not completed features. Each phase should produce a d
 - [x] Service ownership assignment in the workspace UI.
 - [x] Tenant-scoped directed service dependency graph with cycle prevention.
 - [x] Tenant-scoped incident lifecycle (create, assign, acknowledge, resolve) with append-only timeline events.
-- [ ] Runbook references and escalation metadata.
+- [x] Tenant-scoped service runbook references, primary-runbook enforcement, escalation policies, and audited manual incident escalation (notifications and automatic timers remain outstanding).
 - [x] Append-only audit events for privileged workspace operations and incident lifecycle, with ADMIN-only audit viewer.
 
 ## Phase 3 — Observability and SRE

@@ -4,7 +4,7 @@
 
 PulseOps brings service ownership, operational signals, incident workflows, reliability objectives, and cloud-cost visibility into one engineering workspace.
 
-> **Project status:** The repository includes a Next.js portal, NestJS API, PostgreSQL/Prisma schema, JWT authentication, tenant-scoped Service Catalog and Team Management, workspace member invitations, ADMIN/MEMBER RBAC, incident lifecycle management, append-only audit events, service dependency graph, SLI/SLO and error budgets, Prometheus-compatible process metrics, W3C trace context with optional OTLP export, tenant-scoped SLO alerting with a PostgreSQL transactional outbox, GitHub webhook-based deployment tracking and DORA metrics, and GitHub Actions quality gates for API unit tests, PostgreSQL integration tests, and Playwright browser tests. Production hardening (managed secrets, invitation email delivery, email verification, rate limiting, refresh-token/session management, and security headers) remains outstanding.
+> **Project status:** The repository includes a Next.js portal, NestJS API, PostgreSQL/Prisma schema, JWT authentication, tenant-scoped Service Catalog and Team Management, workspace member invitations, ADMIN/MEMBER RBAC, incident lifecycle management, append-only audit events, service dependency graph, SLI/SLO and error budgets, Prometheus-compatible process metrics, W3C trace context with optional OTLP export, tenant-scoped SLO alerting with a PostgreSQL transactional outbox, GitHub webhook-based deployment tracking and DORA metrics, service runbooks and escalation workflows, and GitHub Actions quality gates for API unit tests, PostgreSQL integration tests, and Playwright browser tests. Production hardening (managed secrets, invitation email delivery, email verification, rate limiting, refresh-token/session management, and security headers) remains outstanding.
 
 ## Current stack
 - **Web:** Next.js 15, React 19, TypeScript
@@ -46,6 +46,8 @@ PulseOps brings service ownership, operational signals, incident workflows, reli
 - Metrics: `GET /api/v1/metrics` (Prometheus exposition; `METRICS_TOKEN` required in production).
 - GitHub: `POST /api/v1/integrations/github/repositories`, `GET /api/v1/integrations/github/repositories`, `DELETE /api/v1/integrations/github/repositories/:id`; webhook receiver `POST /api/v1/integrations/github/webhook`.
 - DORA: `GET /api/v1/engineering-metrics/dora?windowDays=30` (7–90 day window; requires connected GitHub repositories and configured webhooks).
+- Runbooks: `GET/POST /api/v1/services/:serviceId/runbooks` and `DELETE /api/v1/services/:serviceId/runbooks/:runbookId` (mutations require ADMIN).
+- Escalation: `GET/PUT /api/v1/services/:serviceId/escalation-policy` and `POST /api/v1/incidents/:id/escalate` (policy writes require ADMIN; escalation is manually triggered and audited).
 
 The readiness endpoint checks PostgreSQL and returns HTTP 503 if the database is unavailable. Team and service APIs derive workspace scope from the verified JWT; clients cannot override tenant IDs.
 
@@ -91,3 +93,5 @@ A license has not yet been selected. Until one is added, all rights are reserved
 ### GitHub webhook setup for delivery intelligence
 
 Connect a service to its GitHub repository as an ADMIN, set `GITHUB_WEBHOOK_SECRET` in the API environment, and configure the repository's webhook to send JSON `pull_request` and `deployment_status` events to `/api/v1/integrations/github/webhook`. The DORA endpoint returns null for metrics without sufficient source data; see [API documentation](docs/API.md) for metric definitions and limitations.
+
+Service-linked incidents can be escalated manually through the API. The selected escalation contact is recorded in the incident timeline and audit log; external notification delivery and automatic timers are intentionally not claimed yet.

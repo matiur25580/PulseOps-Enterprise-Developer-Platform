@@ -35,6 +35,8 @@ model Tenant {
   sloDefinitions SloDefinition[]
   alertRules AlertRule[]
   githubRepositories GitHubRepositoryIntegration[]
+  runbookReferences RunbookReference[]
+  escalationPolicies EscalationPolicy[]
 
   @@map("tenants")
 }
@@ -118,6 +120,9 @@ model Service {
   dependenciesTo ServiceDependency[] @relation("DependencyTarget")
   sloDefinitions SloDefinition[]
   githubRepositories GitHubRepositoryIntegration[]
+  runbooks RunbookReference[]
+  escalationPolicies EscalationPolicy[]
+  incidents Incident[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, lifecycle])
@@ -160,6 +165,9 @@ model Incident {
   tenantId          String           @map("tenant_id") @db.Uuid
   title             String
   description       String?
+  serviceId         String?          @map("service_id") @db.Uuid
+  escalationLevel   Int              @default(0) @map("escalation_level")
+  escalatedAt       DateTime?        @map("escalated_at")
   severity          IncidentSeverity @default(MEDIUM)
   status            IncidentStatus   @default(OPEN)
   assignedToUserId  String?          @map("assigned_to_user_id") @db.Uuid
@@ -169,11 +177,13 @@ model Incident {
   createdAt         DateTime         @default(now()) @map("created_at")
   updatedAt         DateTime         @updatedAt @map("updated_at")
   tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  service            Service?         @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   assignee          User?            @relation("IncidentAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
   events            IncidentEvent[]
 
   @@index([tenantId, status, severity])
   @@index([assignedToUserId])
+  @@index([tenantId, serviceId])
   @@map("incidents")
 }
 
@@ -378,4 +388,42 @@ model GitHubWebhookDelivery {
 
   @@index([integrationId, receivedAt])
   @@map("github_webhook_deliveries")
+}
+
+
+model RunbookReference {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  serviceId String   @map("service_id") @db.Uuid
+  title     String
+  url       String
+  category  String   @default("RUNBOOK")
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, title])
+  @@index([tenantId, serviceId])
+  @@map("runbook_references")
+}
+
+model EscalationPolicy {
+  id                    String   @id @default(uuid()) @db.Uuid
+  tenantId              String   @map("tenant_id") @db.Uuid
+  serviceId             String   @map("service_id") @db.Uuid
+  primaryContactEmail   String   @map("primary_contact_email")
+  secondaryContactEmail String?  @map("secondary_contact_email")
+  escalationAfterMinutes Int    @default(15) @map("escalation_after_minutes")
+  onCallUrl             String?  @map("on_call_url")
+  notes                 String?
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  service               Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, serviceId])
+  @@index([tenantId])
+  @@map("escalation_policies")
 }

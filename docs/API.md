@@ -137,3 +137,18 @@ Merged pull requests are stored from `pull_request` events with action `closed` 
 - MTTR is the mean time from incident creation to resolution for workspace incidents resolved within the selected window.
 
 Metrics include sample sizes and limitations. Null means there is insufficient matching data; zero is not substituted for missing samples. This integration uses GitHub webhooks, not the GitHub App installation/OAuth flow or GitHub API polling. It does not automatically create GitHub webhooks; administrators configure them in GitHub.
+
+
+## Service runbooks and escalation policies
+
+All routes require authentication and are scoped to the caller's workspace. ADMIN is required for mutations.
+- `GET /services/:serviceId/runbooks`: list a service's runbook references.
+- `POST /services/:serviceId/runbooks`: create a reference with `title`, absolute `url`, optional `category` (`RUNBOOK`, `PLAYBOOK`, `DASHBOARD`, `POSTMORTEM`) and optional `isPrimary`. A service can have only one primary runbook; selecting a new primary atomically clears the previous primary.
+- `DELETE /services/:serviceId/runbooks/:runbookId`: remove a reference.
+- `GET /services/:serviceId/escalation-policy`: return the configured policy or null.
+- `PUT /services/:serviceId/escalation-policy`: upsert `primaryContactEmail`, optional `secondaryContactEmail`, `escalationAfterMinutes` (1–1440, default 15), optional `onCallUrl` and `notes`. Primary and secondary contacts must differ.
+
+Incident creation accepts optional `serviceId`; it must reference a service in the same workspace. The incident response includes its linked service.
+- `POST /incidents/:id/escalate`: manually advance an unresolved service-linked incident to the next configured contact. Level 1 targets the primary contact; level 2 targets the secondary contact. The compare-and-set update, incident timeline event and audit event are committed transactionally. Escalation stops when no further contact is configured.
+
+Escalation is currently a recorded workflow action only: PulseOps does not send email/SMS/Slack notifications or automatically escalate after the configured interval. The interval and contact are included in the event metadata for operators and future notification integrations.

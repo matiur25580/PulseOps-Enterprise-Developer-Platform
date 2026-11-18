@@ -1,5 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { IncidentStatus } from '@prisma/client';
+import { IncidentStatus, Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssignIncidentDto } from './dto/assign-incident.dto';
@@ -12,20 +12,24 @@ export class IncidentsService {
   list(tenantId: string) {
     return this.prisma.incident.findMany({
       where: { tenantId }, orderBy: { updatedAt: 'desc' },
-      include: { assignee: { select: { id: true, name: true, email: true } }, events: { orderBy: { createdAt: 'asc' }, include: { actor: { select: { id: true, name: true } } } } },
+      include: { service: { select: { id: true, name: true } }, assignee: { select: { id: true, name: true, email: true } }, events: { orderBy: { createdAt: 'asc' }, include: { actor: { select: { id: true, name: true } } } } },
     });
   }
 
   async create(tenantId: string, actorId: string, input: CreateIncidentDto) {
     if (input.assignedToUserId) await this.assertMember(tenantId, input.assignedToUserId);
+    if (input.serviceId) {
+      const service = await this.prisma.service.findFirst({ where: { id: input.serviceId, tenantId }, select: { id: true } });
+      if (!service) throw new NotFoundException('Service not found in this workspace');
+    }
     const incident = await this.prisma.incident.create({
       data: {
         tenantId, createdByUserId: actorId, title: input.title.trim(),
         description: input.description?.trim(), severity: input.severity ?? 'MEDIUM',
-        assignedToUserId: input.assignedToUserId,
+        assignedToUserId: input.assignedToUserId, serviceId: input.serviceId,
         events: { create: { actorId, eventType: 'CREATED', message: 'Incident created' } },
       },
-      include: { assignee: { select: { id: true, name: true, email: true } }, events: true },
+      include: { service: { select: { id: true, name: true } }, assignee: { select: { id: true, name: true, email: true } }, events: true },
     });
     await this.audit.record({ tenantId, actorId, action: 'INCIDENT_CREATED', entityType: 'INCIDENT', entityId: incident.id, metadata: { severity: incident.severity } });
     return incident;
@@ -60,6 +64,43 @@ export class IncidentsService {
     await this.prisma.incidentEvent.create({ data: { incidentId: id, actorId, eventType: 'RESOLVED', message: message?.trim() || 'Incident resolved' } });
     await this.audit.record({ tenantId, actorId, action: 'INCIDENT_RESOLVED', entityType: 'INCIDENT', entityId: id });
     return updated;
+  }
+
+
+  async escalate(tenantId: string, actorId: string, id: string) {
+    const incident = await this.prisma.incident.findFirst({
+      where: { id, tenantId },
+      select: { id: true, title: true, status: true, serviceId: true, escalationLevel: true },
+    });
+    if (!incident) throw new NotFoundException('Incident not found');
+    if (incident.status === IncidentStatus.RESOLVED) throw new ConflictException('Resolved incidents cannot be escalated');
+    if (!incident.serviceId) throw new ConflictException('Link this incident to a service before escalating');
+    const policy = await this.prisma.escalationPolicy.findUnique({
+      where: { tenantId_serviceId: { tenantId, serviceId: incident.serviceId } },
+    });
+    if (!policy) throw new NotFoundException('No escalation policy is configured for this service');
+    const nextLevel = incident.escalationLevel + 1;
+    const targetContact = nextLevel === 1 ? policy.primaryContactEmail : nextLevel === 2 ? policy.secondaryContactEmail : null;
+    if (!targetContact) throw new ConflictException('No further escalation contact is configured');
+    const escalatedAt = new Date();
+    const message = 'Incident escalated to level ' + nextLevel + ' contact ' + targetContact;
+    return this.prisma.$transaction(async tx => {
+      const claimed = await tx.incident.updateMany({
+        where: { id, tenantId, status: { not: IncidentStatus.RESOLVED }, escalationLevel: incident.escalationLevel },
+        data: { escalationLevel: nextLevel, escalatedAt },
+      });
+      if (claimed.count !== 1) throw new ConflictException('Incident changed while escalation was being applied; retry');
+      await tx.incidentEvent.create({
+        data: { incidentId: id, actorId, eventType: 'ESCALATED', message, metadata: { escalationLevel: nextLevel, targetContact, escalationAfterMinutes: policy.escalationAfterMinutes } },
+      });
+      await tx.auditLog.create({
+        data: { tenantId, actorId, action: 'INCIDENT_ESCALATED', entityType: 'INCIDENT', entityId: id, metadata: { escalationLevel: nextLevel, targetContact } },
+      });
+      return tx.incident.findFirst({
+        where: { id, tenantId },
+        include: { service: { select: { id: true, name: true } }, assignee: { select: { id: true, name: true, email: true } }, events: { orderBy: { createdAt: 'asc' } } },
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
   private async find(tenantId: string, id: string) {
