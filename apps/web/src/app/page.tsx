@@ -384,6 +384,41 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="team-panel">
+          <div className="catalog-toolbar"><div><p className="eyebrow">SERVICE TOPOLOGY</p><h2>Dependency Graph</h2><p className="muted">Directed service dependencies. Cycles and cross-workspace edges are rejected.</p></div><span className="counter">TENANT SCOPED</span></div>
+          {identity.role === 'ADMIN' && <form className="topology-form" onSubmit={createDependency}>
+            <label>Upstream service<select required value={dependencyForm.sourceServiceId} onChange={event => setDependencyForm({ ...dependencyForm, sourceServiceId: event.target.value })}><option value="">Select source</option>{services.map(service => <option key={service.id} value={service.id}>{service.name}</option>)}</select></label>
+            <span className="dependency-arrow">depends on →</span>
+            <label>Downstream service<select required value={dependencyForm.targetServiceId} onChange={event => setDependencyForm({ ...dependencyForm, targetServiceId: event.target.value })}><option value="">Select dependency</option>{services.map(service => <option key={service.id} value={service.id}>{service.name}</option>)}</select></label>
+            <button className="primary-button" disabled={busy || services.length < 2}>Add edge</button>
+          </form>}
+          {dependencies.length === 0 ? <p className="team-empty">No dependency edges yet.</p> : <div className="dependency-list">{dependencies.map(edge => <article className="dependency-edge" key={edge.id}><strong>{edge.sourceService.name}</strong><span>depends on →</span><strong>{edge.targetService.name}</strong>{identity.role === 'ADMIN' && <button className="danger-link" disabled={busy} onClick={() => deleteDependency(edge.id)}>Remove</button>}</article>)}</div>}
+        </section>
+
+        <section className="team-panel">
+          <div className="catalog-toolbar"><div><p className="eyebrow">RELIABILITY OBJECTIVES</p><h2>SLI / SLO & Error Budget</h2><p className="muted">Rolling windows with measurable compliance and remaining budget.</p></div><span className="counter">SRE CONTROLS</span></div>
+          {identity.role === 'ADMIN' && <form className="topology-form slo-form" onSubmit={createSlo}>
+            <label>Service<select required value={sloForm.serviceId} onChange={event => setSloForm({ ...sloForm, serviceId: event.target.value })}><option value="">Select service</option>{services.map(service => <option key={service.id} value={service.id}>{service.name}</option>)}</select></label>
+            <label>SLO name<input required minLength={3} maxLength={120} value={sloForm.name} onChange={event => setSloForm({ ...sloForm, name: event.target.value })} placeholder="Monthly availability" /></label>
+            <label>Indicator<select value={sloForm.indicator} onChange={event => setSloForm({ ...sloForm, indicator: event.target.value as Slo['indicator'] })}><option value="AVAILABILITY">Availability</option><option value="LATENCY">Latency</option></select></label>
+            <label>Target %<input type="number" min="0.01" max="100" step="0.01" required value={sloForm.targetPercent} onChange={event => setSloForm({ ...sloForm, targetPercent: event.target.value })} /></label>
+            <label>Window days<input type="number" min="1" max="90" required value={sloForm.windowDays} onChange={event => setSloForm({ ...sloForm, windowDays: event.target.value })} /></label>
+            {sloForm.indicator === 'LATENCY' && <label>Latency threshold (ms)<input type="number" min="1" required value={sloForm.latencyThresholdMs} onChange={event => setSloForm({ ...sloForm, latencyThresholdMs: event.target.value })} /></label>}
+            <button className="primary-button" disabled={busy || services.length === 0}>Create SLO</button>
+          </form>}
+          {slos.length === 0 ? <p className="team-empty">No SLOs configured yet.</p> : <div className="slo-list">{slos.map(slo => <article className="slo-card" key={slo.id}>
+            <div className="slo-head"><div><strong>{slo.name}</strong><p className="muted">{slo.service.name} · {slo.indicator} · target {slo.targetPercent}% over {slo.windowDays}d</p></div>{identity.role === 'ADMIN' && <button className="danger-link" disabled={busy} onClick={() => deleteSlo(slo.id)}>Delete</button>}</div>
+            <div className="slo-metrics"><div><small>Measured SLI</small><strong>{slo.measurement.sliPercent === null ? 'No data' : slo.measurement.sliPercent.toFixed(3) + '%'}</strong></div><div><small>Error budget remaining</small><strong>{slo.measurement.errorBudgetRemainingPercent === null ? 'No data' : slo.measurement.errorBudgetRemainingPercent.toFixed(1) + '%'}</strong></div><div><small>Good / total</small><strong>{slo.measurement.goodCount} / {slo.measurement.sampleCount}</strong></div></div>
+            <p className="fine-print">Data source: {slo.measurement.dataSource}. Production telemetry is not yet connected.</p>
+          </article>)}</div>}
+          {identity.role === 'ADMIN' && slos.length > 0 && <form className="topology-form sample-form" onSubmit={recordSliSample}>
+            <label>SLO<select required value={sampleForm.sloId} onChange={event => setSampleForm({ ...sampleForm, sloId: event.target.value })}><option value="">Select SLO</option>{slos.map(slo => <option key={slo.id} value={slo.id}>{slo.name}</option>)}</select></label>
+            <label>Outcome<select value={String(sampleForm.success)} onChange={event => setSampleForm({ ...sampleForm, success: event.target.value === 'true' })}><option value="true">Good event</option><option value="false">Bad event</option></select></label>
+            {slos.find(row => row.id === sampleForm.sloId)?.indicator === 'LATENCY' && <label>Observed latency (ms)<input type="number" min="0" required value={sampleForm.latencyMs} onChange={event => setSampleForm({ ...sampleForm, latencyMs: event.target.value })} /></label>}
+            <button className="quiet-button" disabled={busy}>Record SLI sample</button>
+          </form>}
+        </section>
+
         <section className="workspace-members">
           <div className="catalog-toolbar"><div><p className="eyebrow">ON-CALL OPERATIONS</p><h2>Incident Management</h2><p className="muted">{incidents.filter(item => item.status !== 'RESOLVED').length} active incident(s) · tenant scoped</p></div><span className="counter">LIVE WORKSPACE DATA</span></div>
           <form className="team-form" onSubmit={createIncident}>
