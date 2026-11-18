@@ -60,10 +60,13 @@ export class OutboxWorker implements OnModuleInit, OnModuleDestroy {
 
   private async claimOne(): Promise<ClaimedEvent | null> {
     const staleBefore = new Date(Date.now() - 5 * 60 * 1000);
-    await this.prisma.outboxEvent.updateMany({
-      where: { status: 'PROCESSING', lockedAt: { lt: staleBefore }, attempts: { gte: 8 } },
-      data: { status: 'DEAD_LETTER', lockedAt: null, lastError: 'Worker lease expired after maximum attempts' },
-    });
+    await this.prisma.$executeRaw(Prisma.sql`
+      UPDATE outbox_events
+      SET status = 'DEAD_LETTER', locked_at = NULL,
+          last_error = 'Worker lease expired after maximum attempts', updated_at = NOW()
+      WHERE status = 'PROCESSING' AND locked_at < ${staleBefore}
+        AND attempts >= max_attempts
+    `);
     const rows = await this.prisma.$queryRaw<ClaimedEvent[]>(Prisma.sql`
       UPDATE outbox_events
       SET status = 'PROCESSING', locked_at = NOW(), attempts = attempts + 1, updated_at = NOW()
