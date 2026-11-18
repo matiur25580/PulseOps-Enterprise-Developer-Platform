@@ -77,6 +77,34 @@ export default function Home() {
     if (role === 'ADMIN') setAuditLogs(await apiRequest<AuditLog[]>('/audit-logs?limit=30', accessToken));
   }
 
+  async function createDependency(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!token) return; setBusy(true); setError('');
+    try { const row = await apiRequest<Dependency>('/service-dependencies', token, { method: 'POST', body: JSON.stringify(dependencyForm) }); setDependencies(rows => [...rows, row]); setDependencyForm({ sourceServiceId: '', targetServiceId: '' }); setNotice('Dependency created.'); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not create dependency'); } finally { setBusy(false); }
+  }
+  async function deleteDependency(id: string) {
+    if (!token) return; setBusy(true);
+    try { await apiRequest('/service-dependencies/' + id, token, { method: 'DELETE' }); setDependencies(rows => rows.filter(row => row.id !== id)); setNotice('Dependency removed.'); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not remove dependency'); } finally { setBusy(false); }
+  }
+  async function createSlo(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!token || !sloForm.serviceId) return; setBusy(true); setError('');
+    const body = { name: sloForm.name, indicator: sloForm.indicator, targetPercent: Number(sloForm.targetPercent), windowDays: Number(sloForm.windowDays), ...(sloForm.indicator === 'LATENCY' ? { latencyThresholdMs: Number(sloForm.latencyThresholdMs) } : {}) };
+    try { await apiRequest<Slo>('/slos/services/' + sloForm.serviceId, token, { method: 'POST', body: JSON.stringify(body) }); setSlos(await apiRequest<Slo[]>('/slos', token)); setSloForm({ ...sloForm, name: '' }); setNotice('SLO created.'); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not create SLO'); } finally { setBusy(false); }
+  }
+  async function recordSliSample(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!token || !sampleForm.sloId) return; setBusy(true); setError('');
+    const slo = slos.find(row => row.id === sampleForm.sloId);
+    try { await apiRequest('/slos/' + sampleForm.sloId + '/samples', token, { method: 'POST', body: JSON.stringify({ success: sampleForm.success, ...(slo?.indicator === 'LATENCY' ? { latencyMs: Number(sampleForm.latencyMs) } : {}) }) }); setSlos(await apiRequest<Slo[]>('/slos', token)); setNotice('SLI sample recorded.'); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not record SLI sample'); } finally { setBusy(false); }
+  }
+  async function deleteSlo(id: string) {
+    if (!token) return; setBusy(true);
+    try { await apiRequest('/slos/' + id, token, { method: 'DELETE' }); setSlos(rows => rows.filter(row => row.id !== id)); setNotice('SLO removed.'); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not remove SLO'); } finally { setBusy(false); }
+  }
+
   async function createIncident(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!token) return;
     setBusy(true); setError(''); setNotice('');
