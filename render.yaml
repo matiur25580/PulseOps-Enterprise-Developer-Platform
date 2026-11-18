@@ -27,6 +27,6 @@ services:
           name: pulseops-test-db
           property: connectionString
       - key: JWT_SECRET
-        sync: false
+        generateValue: true
       - key: METRICS_TOKEN
-        sync: false
+        generateValue: true
