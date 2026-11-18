@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 
 type Service = {
   id: string; name: string; slug: string; description: string | null;
@@ -49,6 +49,7 @@ const emptyTeam = { name: '', email: '' };
 async function apiRequest<T>(path: string, token?: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API}${path}`, {
     ...init,
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init.headers },
   });
   const payload = await response.json().catch(() => ({}));
@@ -95,6 +96,24 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    if (!token) return;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`${API}/auth/refresh`, { method: 'POST', credentials: 'include' });
+        if (!response.ok) throw new Error('Session expired. Please sign in again.');
+        const payload = await response.json() as { accessToken: string };
+        setToken(payload.accessToken);
+      } catch (err) {
+        setToken('');
+        setIdentity(null);
+        setError(err instanceof Error ? err.message : 'Session expired. Please sign in again.');
+      }
+    }, 14 * 60 * 1000);
+    return () => window.clearTimeout(timer);
+  }, [token]);
+
 
   async function refreshServiceOperations(accessToken: string, serviceId: string) {
     setRunbookServiceId(serviceId);
