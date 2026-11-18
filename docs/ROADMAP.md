@@ -22,16 +22,17 @@ Roadmap items are targets, not completed features. Each phase should produce a d
 
 ## Phase 2 — Operational workflows
 - [x] Service ownership assignment in the workspace UI.
-- [ ] Service dependency graph.
+- [x] Tenant-scoped directed service dependency graph with cycle prevention.
 - [x] Tenant-scoped incident lifecycle (create, assign, acknowledge, resolve) with append-only timeline events.
 - [ ] Runbook references and escalation metadata.
 - [x] Append-only audit events for privileged workspace operations and incident lifecycle, with ADMIN-only audit viewer.
 
 ## Phase 3 — Observability and SRE
-- [ ] OpenTelemetry instrumentation.
-- [ ] Metrics/logs/traces integration.
-- [ ] SLI/SLO definitions and error-budget calculations.
-- [ ] Alert and burn-rate views.
+- [x] Structured HTTP request logs, trace ID propagation, and Prometheus-compatible process metrics endpoint.
+- [ ] OpenTelemetry SDK/OTLP export and collector integration.
+- [ ] Durable external metrics/logs/traces backend and automatic service-level telemetry ingestion.
+- [x] Persisted per-service SLI/SLO definitions, rolling-window calculations, and remaining error-budget reporting (manual sample ingestion).
+- [ ] Alert rules, multi-window burn-rate calculations, and notification integrations.
 
 ## Phase 4 — Delivery and FinOps
 - [ ] Deployment metadata integrations.
