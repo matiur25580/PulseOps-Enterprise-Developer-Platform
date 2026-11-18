@@ -56,6 +56,7 @@ describe('OtlpTraceExporter', () => {
       startTimeUnixNano: '1000000',
       endTimeUnixNano: '2000000',
       statusCode: 200,
+      traceFlags: '01',
       attributes: [],
     });
     expect(fetchSpy).not.toHaveBeenCalled();
