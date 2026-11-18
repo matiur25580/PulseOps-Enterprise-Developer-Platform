@@ -71,7 +71,7 @@ test('workspace owner can manage services and members while invited members get 
   await teamRow.getByRole('button', { name: 'Edit' }).click();
   await page.getByLabel('Team name').fill('Browser Platform Team Updated');
   await page.getByRole('button', { name: /Save team/ }).click();
-  await expect(page.getByText('Browser Platform Team Updated')).toBeVisible();
+  await expect(page.locator('.team-row').filter({ hasText: 'Browser Platform Team Updated' })).toBeVisible();
   const updatedTeamRow = page.locator('.team-row').filter({ hasText: 'Browser Platform Team Updated' });
   page.once('dialog', dialog => dialog.accept());
   await updatedTeamRow.getByRole('button', { name: 'Delete' }).click();
