@@ -35,6 +35,7 @@ type DoraMetrics = {
   services: { serviceId: string; serviceName: string; repository: string }[];
   limitations: string[];
 };
+type AuthSession = { id: string; createdAt: string; lastUsedAt: string | null; expiresAt: string };
 type AuthPayload = {
   accessToken: string;
   user: { id: string; name: string; email: string };
@@ -75,6 +76,8 @@ export default function Home() {
   const [costSummary, setCostSummary] = useState<CostSummary | null>(null);
   const [costBudgets, setCostBudgets] = useState<CostBudget[]>([]);
   const [doraMetrics, setDoraMetrics] = useState<DoraMetrics | null>(null);
+  const [sessions, setSessions] = useState<AuthSession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
   const [runbookServiceId, setRunbookServiceId] = useState('');
   const [runbooks, setRunbooks] = useState<Runbook[]>([]);
   const [escalationPolicy, setEscalationPolicy] = useState<EscalationPolicy | null>(null);
@@ -158,6 +161,36 @@ export default function Home() {
     setCostSummary(summary); setCostBudgets(budgets); setDoraMetrics(dora);
   }
 
+  async function refreshSessions(accessToken: string) {
+    setSessionsLoading(true);
+    try { setSessions(await apiRequest<AuthSession[]>('/auth/sessions', accessToken)); }
+    finally { setSessionsLoading(false); }
+  }
+
+  async function revokeSession(id: string) {
+    if (!token || !window.confirm('Revoke this session? Any device using it will need to sign in again.')) return;
+    setBusy(true); setError('');
+    try {
+      await apiRequest('/auth/sessions/' + encodeURIComponent(id), token, { method: 'DELETE' });
+      await refreshSessions(token);
+      setNotice('Session revoked successfully.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not revoke session'); }
+    finally { setBusy(false); }
+  }
+
+  async function revokeAllSessions() {
+    if (!token || !window.confirm('Revoke every active session, including this device, and sign out?')) return;
+    setBusy(true); setError('');
+    try {
+      await apiRequest('/auth/logout-all', token, { method: 'POST' });
+      setToken(''); setIdentity(null); setSessions([]);
+      setServices([]); setTeams([]); setMembers([]); setIncidents([]); setAuditLogs([]); setDependencies([]); setSlos([]);
+      setRunbookServiceId(''); setRunbooks([]); setEscalationPolicy(null); setCostSummary(null); setCostBudgets([]); setDoraMetrics(null);
+      setNotice('All active sessions were revoked. Sign in again to continue.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not revoke all sessions'); }
+    finally { setBusy(false); }
+  }
+
   async function refreshWorkspace(accessToken: string, role: AuthPayload['role']) {
     const [serviceRows, teamRows, memberRows, incidentRows, dependencyRows, sloRows] = await Promise.all([
       apiRequest<Service[]>('/services', accessToken),
@@ -168,6 +201,7 @@ export default function Home() {
       apiRequest<Slo[]>('/slos', accessToken),
     ]);
     setServices(serviceRows); setTeams(teamRows); setMembers(memberRows); setIncidents(incidentRows); setDependencies(dependencyRows); setSlos(sloRows);
+    await refreshSessions(accessToken);
     await refreshServiceOperations(accessToken, serviceRows[0]?.id ?? '');
     if (role === 'ADMIN') setAuditLogs(await apiRequest<AuditLog[]>('/audit-logs?limit=30', accessToken));
     await refreshFinops(accessToken, costPeriod);
@@ -522,6 +556,34 @@ export default function Home() {
           <div><p className="eyebrow">ENGINEERING WORKSPACE</p><h1 className="workspace-title">Your workspace<span>.</span></h1><p className="muted">{identity.tenant.slug} · signed in as {identity.user.name} · {identity.role}</p></div>
           <button className="quiet-button" onClick={signOut}>Sign out</button>
         </div>
+
+        <section className="team-panel session-panel">
+          <div className="catalog-toolbar">
+            <div><p className="eyebrow">ACCOUNT SECURITY</p><h2>Active sessions</h2><p className="muted">Review authenticated sessions for this workspace and revoke access you no longer recognize.</p></div>
+            <div className="session-actions">
+              <span className="counter">{sessions.length} ACTIVE</span>
+              <button type="button" className="quiet-button" disabled={sessionsLoading || busy} onClick={() => void refreshSessions(token)}>{sessionsLoading ? 'Refreshing…' : 'Refresh'}</button>
+            </div>
+          </div>
+          {sessionsLoading && sessions.length === 0 ? <p className="team-empty">Loading active sessions…</p> : sessions.length === 0 ? <p className="team-empty">No active sessions were returned. Refresh to check again.</p> : <div className="session-list">
+            {sessions.map((session, index) => (
+              <article className="session-row" key={session.id}>
+                <div className="session-icon" aria-hidden="true">⌘</div>
+                <div className="team-info">
+                  <strong>Authenticated session {index + 1}</strong>
+                  <span>Created {new Date(session.createdAt).toLocaleString()}</span>
+                  <small>{session.lastUsedAt ? 'Last activity ' + new Date(session.lastUsedAt).toLocaleString() : 'No activity timestamp yet'} · Expires {new Date(session.expiresAt).toLocaleDateString()}</small>
+                  <code>{session.id.slice(0, 8)}…{session.id.slice(-4)}</code>
+                </div>
+                <button type="button" className="danger-link" disabled={busy} onClick={() => void revokeSession(session.id)}>Revoke session</button>
+              </article>
+            ))}
+          </div>}
+          <div className="session-footer">
+            <p className="fine-print">Revoking a session immediately prevents it from refreshing or accessing protected API routes. Session details are limited to timestamps and an opaque identifier; device fingerprinting is not collected.</p>
+            <button type="button" className="quiet-button session-danger" disabled={busy || sessions.length === 0} onClick={() => void revokeAllSessions()}>Revoke all sessions &amp; sign out</button>
+          </div>
+        </section>
 
         <section className="team-panel">
           <div className="catalog-toolbar">
