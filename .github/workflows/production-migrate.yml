@@ -1,0 +1,47 @@
+name: Production Database Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type APPLY to run Prisma migrations against PRODUCTION_DATABASE_URL
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pulseops-production-database-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: ${{ inputs.confirm == 'APPLY' }}
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Require production database secret
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Configure PRODUCTION_DATABASE_URL in the protected production environment."
+            exit 1
+          fi
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+      - name: Validate Prisma schema
+        run: pnpm --filter @pulseops/api prisma:validate
+      - name: Apply pending migrations
+        run: pnpm --filter @pulseops/api exec prisma migrate deploy
