@@ -4,7 +4,73 @@
 
 PulseOps brings service ownership, operational signals, incident workflows, reliability objectives, and cloud-cost visibility into one engineering workspace.
 
-> **Project status:** The repository includes a Next.js portal, NestJS API, PostgreSQL/Prisma schema, JWT authentication, tenant-scoped Service Catalog and Team Management, workspace member invitations, ADMIN/MEMBER RBAC, incident lifecycle management, append-only audit events, service dependency graph, SLI/SLO and error budgets, Prometheus-compatible process metrics, W3C trace context with optional OTLP export, tenant-scoped SLO alerting with a PostgreSQL transactional outbox, GitHub webhook-based deployment tracking and DORA metrics, service runbooks and escalation workflows, and GitHub Actions quality gates for API unit tests, PostgreSQL integration tests, and Playwright browser tests. Production hardening (managed secrets, invitation email delivery, email verification, rate limiting, refresh-token/session management, and security headers) remains outstanding.
+> **Project status:** The repository includes a Next.js portal, NestJS API, PostgreSQL/Prisma schema, JWT authentication with rotating refresh sessions and server-side session revocation, database-backed authentication rate limits, security headers, tenant-scoped Service Catalog and Team Management, workspace invitations, ADMIN/MEMBER RBAC, incident lifecycle management, append-only audit events, service dependency graph, SLI/SLO and error budgets, Prometheus-compatible process metrics, W3C trace context with optional OTLP export, tenant-scoped SLO alerting with a PostgreSQL transactional outbox, GitHub webhook-based deployment tracking and DORA metrics, FinOps cost imports and budgets, service runbooks and escalation workflows, and GitHub Actions quality gates for API unit tests, PostgreSQL integration tests, builds, and Playwright browser tests. Some enterprise integrations (such as SAML/SCIM, managed cloud billing ingestion, outbound email, and AI-assisted remediation) remain planned or require external configuration; see the roadmap.
+
+
+
+## Product dashboard gallery
+
+The following product UI concepts illustrate the main PulseOps workflows. They are **illustrative dashboard designs**, not claims that every screen or integration is currently live. Each dashboard is shown at full width in a single vertical column for easy browsing.
+
+### 1. Platform Overview
+A unified view of service health, uptime, active incidents, and delivery activity.
+
+![PulseOps Platform Overview dashboard](docs/images/dashboard-overview.svg)
+
+### 2. Service Catalog & Dependencies
+Discover services, ownership, criticality, health, and upstream/downstream relationships.
+
+![PulseOps Service Catalog dashboard](docs/images/dashboard-service-catalog.svg)
+
+### 3. Incident Command Center
+Coordinate severity, impact, responders, investigation progress, and incident timelines.
+
+![PulseOps Incident Command Center dashboard](docs/images/dashboard-incident-command.svg)
+
+### 4. SLO & Error Budgets
+Track availability objectives, error-budget consumption, and reliability burn rates.
+
+![PulseOps SLO and Error Budgets dashboard](docs/images/dashboard-slo-reliability.svg)
+
+### 5. Observability Explorer
+Explore metrics, logs, latency, and distributed trace context in one workspace.
+
+![PulseOps Observability Explorer dashboard](docs/images/dashboard-observability.svg)
+
+### 6. Alert Management
+Review alert rules, active notifications, resolved events, and delivery channels.
+
+![PulseOps Alert Management dashboard](docs/images/dashboard-alert-management.svg)
+
+### 7. Deployment Intelligence
+Understand deployment frequency, lead time, change failure rate, and release flow.
+
+![PulseOps Deployment Intelligence dashboard](docs/images/dashboard-deployment-intelligence.svg)
+
+### 8. FinOps & Cloud Costs
+Review service-level cost allocation, budget utilization, and spending forecasts.
+
+![PulseOps FinOps dashboard](docs/images/dashboard-finops.svg)
+
+### 9. Team & Access Management
+Manage workspace members, roles, and least-privilege access at a glance.
+
+![PulseOps Team and Access Management dashboard](docs/images/dashboard-team-access.svg)
+
+### 10. Audit & Security
+Inspect security posture and a searchable trail of privileged workspace activity.
+
+![PulseOps Audit and Security dashboard](docs/images/dashboard-audit-security.svg)
+
+### 11. Runbooks & Escalation
+Keep operational procedures and escalation paths close to incident workflows.
+
+![PulseOps Runbooks and Escalation dashboard](docs/images/dashboard-runbooks-escalation.svg)
+
+### 12. Platform Settings & Integrations
+Configure workspace details, integration status, environments, and security controls.
+
+![PulseOps Platform Settings dashboard](docs/images/dashboard-platform-settings.svg)
 
 ## Current stack
 - **Web:** Next.js 15, React 19, TypeScript
