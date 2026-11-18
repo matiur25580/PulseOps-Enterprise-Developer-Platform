@@ -53,7 +53,7 @@ export class HttpObservabilityInterceptor implements NestInterceptor {
         route,
         status,
         durationMs: Number((durationSeconds * 1000).toFixed(2)),
-      }) + '\\n');
+      }) + '\n');
 
       if (sampled) {
         void this.exporter.export({
