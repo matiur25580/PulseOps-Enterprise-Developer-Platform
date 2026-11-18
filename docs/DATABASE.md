@@ -56,3 +56,9 @@ Define retention periods for audit events, incident payloads, telemetry referenc
 - `escalation_policies` stores the primary/secondary contact addresses, escalation interval guidance, optional on-call URL and operator notes for each service.
 - `incidents.service_id` optionally links an incident to a service. `escalation_level` and `escalated_at` record manual escalation progression. Incident events and audit logs capture the selected escalation target.
 - Runbook references and escalation policies cascade with their owning tenant/service. Incident service references are cleared when the service is deleted.
+
+
+## FinOps
+- `cost_records` stores normalized provider line items, source idempotency keys, resource metadata, billing month, exact decimal cost, currency and optional service allocation. Provider/source IDs are unique per tenant; deleting a service preserves cost history and clears the allocation.
+- `cost_budgets` stores monthly workspace-wide or service-specific budget amounts and threshold percentages. Currency is explicit and comparisons never combine currencies.
+- `cost_budget_events` records an idempotent threshold event per budget, month and configured threshold. Evaluation is manual; no background scheduler or provider API ingestion is implied.
