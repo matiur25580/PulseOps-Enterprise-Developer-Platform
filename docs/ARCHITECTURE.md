@@ -42,7 +42,7 @@ flowchart LR
 
 ## Current observability slice
 
-The API currently emits structured JSON HTTP request events, propagates W3C trace IDs when supplied (or creates a trace ID), and exposes process-local Prometheus request counters and duration histograms at `/api/v1/metrics`. These are lightweight process metrics, not an OTLP trace pipeline or durable metrics backend. Service-level objectives are persisted per service and calculated from authenticated SLI sample ingestion; production traffic is not yet automatically mapped to service SLI events.
+The API emits structured JSON HTTP request events, creates server spans with W3C trace context, returns `traceparent` and `x-trace-id` response headers, and can export sampled spans through OTLP/HTTP when configured. An AsyncLocalStorage context helper allows outbound HTTP clients to inject the active W3C `traceparent`. The API also exposes process-local Prometheus request counters and duration histograms at `/api/v1/metrics`; these metrics are not durable or horizontally aggregated. Service-level objectives are persisted per service and calculated from authenticated SLI sample ingestion; production traffic is not yet automatically mapped to service SLI events.
 
 Service dependencies are stored as tenant-scoped directed edges. The API rejects self-edges and detects cycles before insertion.
 
@@ -71,3 +71,10 @@ Service dependencies are stored as tenant-scoped directed edges. The API rejects
 - Keep secrets in deployment secret stores; never commit real credentials.
 - Require explicit human approval for disruptive or privileged remediation.
 - Record actor, action, target, timestamp, and outcome in the audit trail.
+
+
+## Distributed tracing configuration
+
+OTLP export is opt-in. Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to a complete OTLP/HTTP traces URL, or set `OTEL_EXPORTER_OTLP_ENDPOINT` as the base URL (the API appends `/v1/traces`). Configure `OTEL_SERVICE_NAME` and optional comma-separated `OTEL_EXPORTER_OTLP_HEADERS` for authenticated collectors. `OTEL_TRACES_SAMPLER_ARG` controls deterministic root sampling from 0 to 1; the default is 1.0. Incoming sampled W3C trace context remains sampled, while an unsampled parent remains unsampled.
+
+The exporter uses the Node.js built-in Fetch API, a bounded three-second timeout, and best-effort delivery so collector outages do not fail API requests. The context helper exposes `TraceContextService.inject(headers)` for outbound HTTP adapters. Current tracing covers inbound HTTP server spans; automatic database/Prisma spans, browser-to-API instrumentation, baggage, metrics OTLP export, and a collector deployment are not included. Without an OTLP endpoint, spans are not sent remotely, but trace IDs remain available in response headers and structured logs.
