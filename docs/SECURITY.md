@@ -33,11 +33,16 @@ PulseOps handles operational metadata and potentially sensitive infrastructure c
 ## Implemented authentication and tenant isolation
 - Passwords are stored as bcrypt hashes (cost factor 12); access tokens are signed JWTs with a one-hour expiry.
 - Production startup requires `JWT_SECRET`; registration creates a workspace and ADMIN membership transactionally.
-- Service and Team controllers require verified bearer tokens. Tenant scope comes from the token, not a request header or body.
+- Service, Team, and Member controllers require verified bearer tokens. Tenant scope comes from the token, not a request header or body.
+- Service, Team, and Member controllers require verified bearer tokens. Tenant scope comes from the token, not a request header or body.
+- The JWT guard revalidates workspace membership and current role from PostgreSQL on every request. Removed members lose access immediately; role changes apply to already-issued tokens.
+- ADMIN-only write operations are enforced by API guards. MEMBER is read-only for Team and Service resources.
+- Workspace invitations store only SHA-256 token hashes, are single-use, expire after seven days, and always grant MEMBER. An administrator must securely share the one-time token until an email provider is integrated.
+- The last workspace administrator cannot be demoted or removed; members cannot remove their own membership.
 - Team update/delete look up resources by both ID and authenticated tenant ID.
 - Service creation verifies any assigned team belongs to the same tenant.
 - Deleting a team preserves its services and clears their optional team reference through the database relation.
 - Unit tests cover tenant-scoped listing/creation and cross-tenant update/delete/assignment rejection.
 
 ## Remaining production hardening
-Email verification, refresh-token rotation/revocation, login/register rate limiting, password reset, audit logging, security headers, and PostgreSQL-backed end-to-end tests remain outstanding. Treat this as an application foundation, not a production security certification.
+Invitation email delivery, email verification, refresh-token rotation/revocation, login/register rate limiting, password reset, audit logging, and security headers remain outstanding. Treat this as an application foundation, not a production security certification.
