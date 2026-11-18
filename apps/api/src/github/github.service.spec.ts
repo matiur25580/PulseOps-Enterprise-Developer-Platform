@@ -95,4 +95,17 @@ describe('GitHubService webhook ingestion and DORA metrics', () => {
     expect(result.meanTimeToRestoreHours).toBe(4);
     expect(result.sampleSizes).toMatchObject({ successfulDeployments: 2, failedDeployments: 1, deploymentAttempts: 3, leadTimeSamples: 1, resolvedIncidents: 1 });
   });
+  it('does not let an older deployment status overwrite a newer status', async () => {
+    const newer = new Date('2026-11-18T12:00:00.000Z');
+    prisma.deploymentRecord.findUnique.mockResolvedValue({ statusUpdatedAt: newer, deployedAt: null });
+    const payload = {
+      repository: { full_name: 'acme/payments' },
+      deployment: { id: 88, sha: 'abc', ref: 'main', environment: 'production' },
+      deployment_status: { id: 99, state: 'success', created_at: '2026-11-18T11:00:00.000Z' },
+    };
+    const result = await service.receiveWebhook('delivery-old', 'deployment_status', signature, raw, payload);
+    expect(result).toEqual({ accepted: true, processed: true });
+    expect(prisma.deploymentRecord.upsert).not.toHaveBeenCalled();
+  });
+
 });
