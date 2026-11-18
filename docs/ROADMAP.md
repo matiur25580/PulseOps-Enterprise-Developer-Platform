@@ -7,14 +7,15 @@ Roadmap items are targets, not completed features. Each phase should produce a d
 - [x] Establish project overview and architecture direction.
 - [x] Document initial data model, API conventions, security, and deployment strategy.
 - [x] Add local database/cache infrastructure and CI scaffold.
-- [ ] Add application workspace and runnable health endpoints.
+- [x] Add application workspace and runnable health endpoints.
 
 ## Phase 1 — First vertical slice
 
-- [ ] Next.js portal shell with authentication integration.
-- [ ] NestJS API with health/readiness endpoints.
-- [ ] PostgreSQL persistence and first migration.
-- [ ] Tenant-aware service catalog CRUD.
+- [x] Next.js portal shell (authentication integration remains future work).
+- [x] NestJS API with health/readiness endpoints.
+- [x] PostgreSQL data model and initial migration.
+- [ ] Apply migrations against a running local database and verify readiness.
+- [ ] Tenant-aware service catalog CRUD with authentication and authorization.
 - [ ] API and UI tests in CI.
 
 ## Phase 2 — Operational workflows
