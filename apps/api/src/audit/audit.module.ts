@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
+import { RolesGuard } from '../common/guards/roles.guard';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuditController } from './audit.controller';
 import { AuditService } from './audit.service';
-@Module({ imports: [PrismaModule], controllers: [AuditController], providers: [AuditService], exports: [AuditService] })
+@Module({ imports: [PrismaModule, AuthModule], controllers: [AuditController], providers: [AuditService, RolesGuard], exports: [AuditService] })
 export class AuditModule {}
