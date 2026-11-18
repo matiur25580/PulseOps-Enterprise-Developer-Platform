@@ -15,5 +15,6 @@ export class IncidentsController {
   @Post() create(@CurrentUser() user: AuthenticatedUser, @Body() body: CreateIncidentDto) { return this.incidents.create(user.tenantId, user.sub, body); }
   @Patch(':id/assign') assign(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string, @Body() body: AssignIncidentDto) { return this.incidents.assign(user.tenantId, user.sub, id, body); }
   @Post(':id/acknowledge') acknowledge(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) { return this.incidents.acknowledge(user.tenantId, user.sub, id); }
+  @Post(':id/escalate') escalate(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) { return this.incidents.escalate(user.tenantId, user.sub, id); }
   @Post(':id/resolve') resolve(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string, @Body() body: ResolveIncidentDto) { return this.incidents.resolve(user.tenantId, user.sub, id, body?.message); }
 }
