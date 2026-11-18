@@ -4,7 +4,7 @@
 
 PulseOps brings service ownership, operational signals, incident workflows, reliability objectives, and cloud-cost visibility into one engineering workspace.
 
-> **Project status:** The repository includes a Next.js portal shell, NestJS API, PostgreSQL/Prisma schema, JWT authentication, tenant-scoped Service Catalog CRUD, Team Management API, and CI build/schema/unit-test checks. Production hardening (managed secrets, email verification, rate limiting, refresh-token/session management, and end-to-end tests) remains outstanding.
+> **Project status:** The repository includes a Next.js portal shell, NestJS API, PostgreSQL/Prisma schema, JWT authentication, tenant-scoped Service Catalog CRUD, Team Management API, and GitHub Actions quality gates for unit, PostgreSQL integration, and Playwright browser tests (newly configured; latest run not yet verified). Production hardening (managed secrets, email verification, rate limiting, refresh-token/session management, and end-to-end tests) remains outstanding.
 
 ## Current stack
 - **Web:** Next.js 15, React 19, TypeScript
