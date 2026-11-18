@@ -631,12 +631,47 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="team-panel operations-panel">
+          <div className="catalog-toolbar">
+            <div><p className="eyebrow">OPERATIONAL READINESS</p><h2>Runbooks & Escalation</h2><p className="muted">Service-specific response references and on-call contacts.</p></div>
+            <label className="period-control">SERVICE<select value={runbookServiceId} onChange={event => void selectRunbookService(event.target.value)}><option value="">Select service</option>{services.map(service => <option key={service.id} value={service.id}>{service.name}</option>)}</select></label>
+          </div>
+          {!runbookServiceId ? <p className="team-empty">Register a service to configure operational references.</p> : <>
+            <div className="runbook-list">
+              {runbooks.length === 0 ? <p className="team-empty">No runbook references configured for this service.</p> : runbooks.map(runbook => <article className="runbook-row" key={runbook.id}>
+                <div><div className="runbook-title"><strong>{runbook.title}</strong>{runbook.isPrimary && <span className="role-pill admin">PRIMARY</span>}</div><small>{runbook.category}</small><a href={runbook.url} target="_blank" rel="noreferrer">{runbook.url}</a></div>
+                {identity.role === 'ADMIN' && <button className="danger-link" disabled={busy} onClick={() => void deleteRunbook(runbook.id)}>Remove</button>}
+              </article>)}
+            </div>
+            {identity.role === 'ADMIN' && <form className="topology-form runbook-form" onSubmit={createRunbook}>
+              <label>Reference title<input required minLength={3} maxLength={150} value={runbookForm.title} onChange={event => setRunbookForm({ ...runbookForm, title: event.target.value })} placeholder="Payments API recovery" /></label>
+              <label>URL<input type="url" required value={runbookForm.url} onChange={event => setRunbookForm({ ...runbookForm, url: event.target.value })} placeholder="https://docs.example.com/runbooks/payments" /></label>
+              <label>Category<select value={runbookForm.category} onChange={event => setRunbookForm({ ...runbookForm, category: event.target.value })}><option value="RUNBOOK">Runbook</option><option value="PLAYBOOK">Playbook</option><option value="DASHBOARD">Dashboard</option><option value="POSTMORTEM">Postmortem</option></select></label>
+              <label className="inline-check"><input type="checkbox" checked={runbookForm.isPrimary} onChange={event => setRunbookForm({ ...runbookForm, isPrimary: event.target.checked })} /> Set as primary</label>
+              <button className="primary-button" disabled={busy}>Add reference</button>
+            </form>}
+            <div className="policy-section">
+              <div className="catalog-toolbar"><div><p className="eyebrow">ON-CALL POLICY</p><h3>Escalation contacts</h3></div><span className="counter">{escalationPolicy ? 'CONFIGURED' : 'NOT CONFIGURED'}</span></div>
+              {escalationPolicy && <p className="muted">Primary: {escalationPolicy.primaryContactEmail} · Secondary: {escalationPolicy.secondaryContactEmail ?? 'Not set'} · Escalation guidance: {escalationPolicy.escalationAfterMinutes} minutes</p>}
+              {identity.role === 'ADMIN' && <form className="topology-form policy-form" onSubmit={saveEscalationPolicy}>
+                <label>Primary contact<input type="email" required value={policyForm.primaryContactEmail} onChange={event => setPolicyForm({ ...policyForm, primaryContactEmail: event.target.value })} placeholder="primary-oncall@company.com" /></label>
+                <label>Secondary contact<input type="email" value={policyForm.secondaryContactEmail} onChange={event => setPolicyForm({ ...policyForm, secondaryContactEmail: event.target.value })} placeholder="secondary-oncall@company.com" /></label>
+                <label>Escalate after (minutes)<input type="number" min="1" max="1440" required value={policyForm.escalationAfterMinutes} onChange={event => setPolicyForm({ ...policyForm, escalationAfterMinutes: event.target.value })} /></label>
+                <label>On-call URL<input type="url" value={policyForm.onCallUrl} onChange={event => setPolicyForm({ ...policyForm, onCallUrl: event.target.value })} placeholder="https://oncall.example.com" /></label>
+                <button className="primary-button" disabled={busy}>Save policy</button>
+              </form>}
+              <p className="fine-print">Escalation currently records the selected contact in the incident timeline and audit trail. It does not send notifications or run an automatic timer.</p>
+            </div>
+          </>}
+        </section>
+
         <section className="workspace-members">
           <div className="catalog-toolbar"><div><p className="eyebrow">ON-CALL OPERATIONS</p><h2>Incident Management</h2><p className="muted">{incidents.filter(item => item.status !== 'RESOLVED').length} active incident(s) · tenant scoped</p></div><span className="counter">LIVE WORKSPACE DATA</span></div>
           <form className="team-form" onSubmit={createIncident}>
             <h3>Report an incident</h3>
             <label>Incident title<input required minLength={3} maxLength={160} value={incidentForm.title} onChange={event => setIncidentForm({ ...incidentForm, title: event.target.value })} placeholder="Elevated API latency" /></label>
             <label>Incident description<textarea maxLength={5000} rows={2} value={incidentForm.description} onChange={event => setIncidentForm({ ...incidentForm, description: event.target.value })} placeholder="Impact, symptoms and context" /></label>
+            <label>Service<select value={incidentForm.serviceId} onChange={event => setIncidentForm({ ...incidentForm, serviceId: event.target.value })}><option value="">Not linked</option>{services.map(service => <option key={service.id} value={service.id}>{service.name}</option>)}</select></label>
             <label>Severity<select value={incidentForm.severity} onChange={event => setIncidentForm({ ...incidentForm, severity: event.target.value as Incident['severity'] })}><option>CRITICAL</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option></select></label>
             <label>Assign to<select value={incidentForm.assignedToUserId} onChange={event => setIncidentForm({ ...incidentForm, assignedToUserId: event.target.value })}><option value="">Unassigned</option>{members.map(member => <option key={member.user.id} value={member.user.id}>{member.user.name}</option>)}</select></label>
             <button className="primary-button" disabled={busy}>Create incident →</button>
@@ -644,10 +679,10 @@ export default function Home() {
           {incidents.length === 0 ? <div className="empty-state"><h3>No incidents reported</h3><p>New incidents and their lifecycle events will appear here.</p></div> : <div className="service-list">
             {incidents.map(incident => <article className="service-row" key={incident.id}>
               <div className="service-symbol">!</div><div className="service-info"><div className="service-title-line"><h3>{incident.title}</h3><span className="lifecycle">{incident.severity} · {incident.status}</span></div>
-                <p>{incident.description || 'No description provided'}</p><span className="service-owner">Assignee: {incident.assignee?.name ?? 'Unassigned'} · {new Date(incident.createdAt).toLocaleString()}</span>
+                <p>{incident.description || 'No description provided'}</p><span className="service-owner">Service: {incident.service?.name ?? 'Not linked'} · Assignee: {incident.assignee?.name ?? 'Unassigned'} · Escalation L{incident.escalationLevel ?? 0} · {new Date(incident.createdAt).toLocaleString()}</span>
                 <div className="fine-print">{incident.events.map(item => <p key={item.id}>{item.eventType}: {item.message} · {new Date(item.createdAt).toLocaleString()}</p>)}</div>
               </div>
-              <div className="service-actions">{incident.status === 'OPEN' && <button disabled={busy} onClick={() => updateIncident(incident.id, 'acknowledge')}>Acknowledge</button>}{incident.status !== 'RESOLVED' && <button className="danger-link" disabled={busy} onClick={() => updateIncident(incident.id, 'resolve')}>Resolve</button>}</div>
+              <div className="service-actions">{incident.status !== 'RESOLVED' && incident.serviceId && <button disabled={busy} onClick={() => void escalateIncident(incident.id)}>Escalate</button>}{incident.status === 'OPEN' && <button disabled={busy} onClick={() => updateIncident(incident.id, 'acknowledge')}>Acknowledge</button>}{incident.status !== 'RESOLVED' && <button className="danger-link" disabled={busy} onClick={() => updateIncident(incident.id, 'resolve')}>Resolve</button>}</div>
             </article>)}
           </div>}
           {identity.role === 'ADMIN' && <div className="catalog-main"><div className="catalog-toolbar"><div><h2>Audit Trail</h2><p className="muted">Recent privileged and incident operations</p></div><span className="counter">ADMIN ONLY</span></div>
