@@ -106,7 +106,9 @@ export class GitHubService {
     const [deployments, pullRequests, incidents] = await Promise.all([
       this.prisma.deploymentRecord.findMany({
         where: { integrationId: { in: ids }, OR: [
-          { state: { in: ['success', 'inactive'] }, deployedAt: { gte: since } },\n          { state: { in: ['failure', 'error'] }, statusUpdatedAt: { gte: since } },\n        ] },
+          { state: { in: ['success', 'inactive'] }, deployedAt: { gte: since } },
+          { state: { in: ['failure', 'error'] }, statusUpdatedAt: { gte: since } },
+        ] },
         select: { integrationId: true, githubDeploymentId: true, sha: true, state: true, deployedAt: true },
       }),
       this.prisma.gitHubPullRequest.findMany({
