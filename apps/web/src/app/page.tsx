@@ -14,6 +14,25 @@ type Incident = { id: string; title: string; description: string | null; severit
 type AuditLog = { id: string; action: string; entityType: string; entityId: string | null; createdAt: string; actor: { name: string; email: string } | null };
 type Dependency = { id: string; sourceService: { id: string; name: string }; targetService: { id: string; name: string } };
 type Slo = { id: string; name: string; indicator: 'AVAILABILITY' | 'LATENCY'; targetPercent: number; windowDays: number; latencyThresholdMs: number | null; service: { id: string; name: string }; measurement: { sampleCount: number; goodCount: number; sliPercent: number | null; errorBudgetRemainingPercent: number | null; dataSource: string } };
+type CostSummary = {
+  period: string; recordCount: number;
+  totalsByCurrency: { currency: string; amount: number }[];
+  byProvider: { provider: string; currency: string; amount: number }[];
+  byService: { serviceId: string | null; serviceName: string; currency: string; amount: number }[];
+  note: string;
+};
+type CostBudget = {
+  id: string; name: string; amount: number; currency: string; thresholdPercent: number;
+  actualAmount: number; utilizationPercent: number | null; recordCount: number;
+  serviceId: string | null; service: { id: string; name: string } | null; period: string;
+};
+type DoraMetrics = {
+  windowDays: number; deploymentFrequencyPerDay: number; deploymentFrequencyPerWeek: number;
+  leadTimeForChangesHours: number | null; changeFailureRatePercent: number | null; meanTimeToRestoreHours: number | null;
+  sampleSizes: { successfulDeployments: number; failedDeployments: number; deploymentAttempts: number; mergedPullRequests: number; leadTimeSamples: number; resolvedIncidents: number };
+  services: { serviceId: string; serviceName: string; repository: string }[];
+  limitations: string[];
+};
 type AuthPayload = {
   accessToken: string;
   user: { id: string; name: string; email: string };
@@ -49,6 +68,12 @@ export default function Home() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [dependencies, setDependencies] = useState<Dependency[]>([]);
   const [slos, setSlos] = useState<Slo[]>([]);
+  const [costPeriod, setCostPeriod] = useState(new Date().toISOString().slice(0, 7));
+  const [costSummary, setCostSummary] = useState<CostSummary | null>(null);
+  const [costBudgets, setCostBudgets] = useState<CostBudget[]>([]);
+  const [doraMetrics, setDoraMetrics] = useState<DoraMetrics | null>(null);
+  const [budgetForm, setBudgetForm] = useState({ name: '', amount: '500', currency: 'USD', serviceId: '', thresholdPercent: '80' });
+  const [costImportText, setCostImportText] = useState('');
   const [dependencyForm, setDependencyForm] = useState({ sourceServiceId: '', targetServiceId: '' });
   const [sloForm, setSloForm] = useState({ serviceId: '', name: '', indicator: 'AVAILABILITY' as Slo['indicator'], targetPercent: '99.9', windowDays: '30', latencyThresholdMs: '300' });
   const [sampleForm, setSampleForm] = useState({ sloId: '', success: true, latencyMs: '100' });
@@ -64,6 +89,15 @@ export default function Home() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
+  async function refreshFinops(accessToken: string, period: string) {
+    const [summary, budgets, dora] = await Promise.all([
+      apiRequest<CostSummary>('/finops/costs?period=' + period, accessToken),
+      apiRequest<CostBudget[]>('/finops/budgets?period=' + period, accessToken),
+      apiRequest<DoraMetrics>('/engineering-metrics/dora?windowDays=30', accessToken),
+    ]);
+    setCostSummary(summary); setCostBudgets(budgets); setDoraMetrics(dora);
+  }
+
   async function refreshWorkspace(accessToken: string, role: AuthPayload['role']) {
     const [serviceRows, teamRows, memberRows, incidentRows, dependencyRows, sloRows] = await Promise.all([
       apiRequest<Service[]>('/services', accessToken),
@@ -75,6 +109,54 @@ export default function Home() {
     ]);
     setServices(serviceRows); setTeams(teamRows); setMembers(memberRows); setIncidents(incidentRows); setDependencies(dependencyRows); setSlos(sloRows);
     if (role === 'ADMIN') setAuditLogs(await apiRequest<AuditLog[]>('/audit-logs?limit=30', accessToken));
+    await refreshFinops(accessToken, costPeriod);
+  }
+
+  async function changeCostPeriod(period: string) {
+    setCostPeriod(period);
+    if (!token) return;
+    try { await refreshFinops(token, period); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not load FinOps period'); }
+  }
+
+  async function createCostBudget(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!token) return; setBusy(true); setError('');
+    try {
+      await apiRequest('/finops/budgets', token, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: budgetForm.name, amount: Number(budgetForm.amount), currency: budgetForm.currency.toUpperCase(),
+          ...(budgetForm.serviceId ? { serviceId: budgetForm.serviceId } : {}),
+          thresholdPercent: Number(budgetForm.thresholdPercent),
+        }),
+      });
+      await refreshFinops(token, costPeriod);
+      setBudgetForm({ ...budgetForm, name: '' });
+      setNotice('FinOps budget created.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not create budget'); }
+    finally { setBusy(false); }
+  }
+
+  async function importCostRecords(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!token) return; setBusy(true); setError('');
+    try {
+      const payload = JSON.parse(costImportText);
+      const result = await apiRequest<{ recordsProcessed: number }>('/finops/cost-records/import', token, { method: 'POST', body: JSON.stringify(payload) });
+      await refreshFinops(token, costPeriod);
+      setNotice(result.recordsProcessed + ' cost record(s) imported or updated.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Invalid JSON or cost import failed'); }
+    finally { setBusy(false); }
+  }
+
+  async function evaluateCostBudgets() {
+    if (!token) return; setBusy(true); setError('');
+    try {
+      const result = await apiRequest<{ outcomes: { state: string }[] }>('/finops/budgets/evaluate?period=' + costPeriod, token, { method: 'POST' });
+      await refreshFinops(token, costPeriod);
+      const triggered = result.outcomes.filter(item => item.state === 'THRESHOLD_REACHED').length;
+      setNotice('Budget evaluation complete: ' + triggered + ' threshold(s) reached.');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not evaluate budgets'); }
+    finally { setBusy(false); }
   }
 
   async function createDependency(event: FormEvent<HTMLFormElement>) {
@@ -266,7 +348,7 @@ export default function Home() {
   }
 
   function signOut() {
-    setToken(''); setIdentity(null); setServices([]); setTeams([]); setMembers([]); setIncidents([]); setAuditLogs([]); setDependencies([]); setSlos([]);
+    setToken(''); setIdentity(null); setServices([]); setTeams([]); setMembers([]); setIncidents([]); setAuditLogs([]); setDependencies([]); setSlos([]); setCostSummary(null); setCostBudgets([]); setDoraMetrics(null);
     setInviteToken(''); setEditingId(null); setEditingTeamId(null);
     setServiceForm(emptyService); setTeamForm(emptyTeam); setNotice('Signed out.');
   }
@@ -419,6 +501,56 @@ export default function Home() {
             {slos.find(row => row.id === sampleForm.sloId)?.indicator === 'LATENCY' && <label>Observed latency (ms)<input type="number" min="0" required value={sampleForm.latencyMs} onChange={event => setSampleForm({ ...sampleForm, latencyMs: event.target.value })} /></label>}
             <button className="quiet-button" disabled={busy}>Record SLI sample</button>
           </form>}
+        </section>
+
+        <section className="team-panel intelligence-panel">
+          <div className="catalog-toolbar">
+            <div><p className="eyebrow">ENGINEERING INTELLIGENCE</p><h2>Delivery & FinOps</h2><p className="muted">DORA delivery signals and allocated cloud spend from connected source data.</p></div>
+            <label className="period-control">BILLING MONTH<input type="month" value={costPeriod} onChange={event => void changeCostPeriod(event.target.value)} /></label>
+          </div>
+          <div className="dora-grid">
+            <article className="dora-card"><small>Deployment frequency</small><strong>{doraMetrics ? doraMetrics.deploymentFrequencyPerWeek.toFixed(2) + ' / week' : '—'}</strong><span>{doraMetrics?.sampleSizes.successfulDeployments ?? 0} successful deployments</span></article>
+            <article className="dora-card"><small>Median lead time</small><strong>{doraMetrics?.leadTimeForChangesHours === null || !doraMetrics ? 'No data' : doraMetrics.leadTimeForChangesHours.toFixed(1) + ' h'}</strong><span>{doraMetrics?.sampleSizes.leadTimeSamples ?? 0} SHA-matched samples</span></article>
+            <article className="dora-card"><small>Change failure rate</small><strong>{doraMetrics?.changeFailureRatePercent === null || !doraMetrics ? 'No data' : doraMetrics.changeFailureRatePercent.toFixed(1) + '%'}</strong><span>{doraMetrics?.sampleSizes.deploymentAttempts ?? 0} deployment attempts</span></article>
+            <article className="dora-card"><small>Mean time to restore</small><strong>{doraMetrics?.meanTimeToRestoreHours === null || !doraMetrics ? 'No data' : doraMetrics.meanTimeToRestoreHours.toFixed(1) + ' h'}</strong><span>{doraMetrics?.sampleSizes.resolvedIncidents ?? 0} resolved incidents</span></article>
+          </div>
+          <p className="fine-print">{doraMetrics?.limitations[0] ?? 'DORA metrics require connected GitHub repositories and webhook data.'}</p>
+          <div className="finops-summary">
+            <div><p className="eyebrow">CLOUD COST ALLOCATION</p><h3>{costSummary?.recordCount ?? 0} cost line item(s)</h3></div>
+            <div className="cost-total-list">{costSummary?.totalsByCurrency.length ? costSummary.totalsByCurrency.map(item => <strong key={item.currency}>{item.amount.toFixed(2)} <small>{item.currency}</small></strong>) : <span className="muted">No cost records for this month.</span>}</div>
+          </div>
+          {costSummary && costSummary.byService.length > 0 && <div className="cost-service-list">
+            {costSummary.byService.map(item => <div className="cost-service-row" key={(item.serviceId ?? 'unallocated') + item.currency}><span>{item.serviceName}</span><strong>{item.amount.toFixed(2)} {item.currency}</strong></div>)}
+          </div>}
+          <p className="fine-print">{costSummary?.note ?? 'Currencies are reported separately; no FX conversion is applied.'}</p>
+          <div className="finops-lower">
+            <div className="finops-budget-column">
+              <div className="catalog-toolbar"><div><p className="eyebrow">SPEND CONTROLS</p><h3>Monthly budgets</h3></div>{identity.role === 'ADMIN' && <button className="quiet-button" disabled={busy} onClick={() => void evaluateCostBudgets()}>Evaluate thresholds</button>}</div>
+              {costBudgets.length === 0 ? <p className="team-empty">No budgets configured yet.</p> : <div className="budget-list">{costBudgets.map(budget => <article className="budget-row" key={budget.id}>
+                <div className="budget-heading"><strong>{budget.name}</strong><span>{budget.service?.name ?? 'Workspace-wide'}</span></div>
+                <div className="budget-values"><strong>{budget.actualAmount.toFixed(2)} {budget.currency}</strong><span>of {budget.amount.toFixed(2)} · {budget.utilizationPercent === null ? 'No data' : budget.utilizationPercent.toFixed(1) + '%'}</span></div>
+                <div className="budget-track"><span style={{ width: Math.min(100, budget.utilizationPercent ?? 0) + '%' }} /></div>
+                <small>{budget.recordCount} record(s) · alert at {budget.thresholdPercent}%</small>
+              </article>)}</div>}
+              {identity.role === 'ADMIN' && <form className="team-form" onSubmit={createCostBudget}>
+                <p className="eyebrow">NEW BUDGET</p>
+                <label>Budget name<input required minLength={3} maxLength={120} value={budgetForm.name} onChange={event => setBudgetForm({ ...budgetForm, name: event.target.value })} placeholder="Production cloud spend" /></label>
+                <div className="budget-form-grid">
+                  <label>Amount<input type="number" min="0.000001" step="0.000001" required value={budgetForm.amount} onChange={event => setBudgetForm({ ...budgetForm, amount: event.target.value })} /></label>
+                  <label>Currency<input required maxLength={3} minLength={3} value={budgetForm.currency} onChange={event => setBudgetForm({ ...budgetForm, currency: event.target.value })} /></label>
+                  <label>Alert threshold %<input type="number" min="1" max="1000" required value={budgetForm.thresholdPercent} onChange={event => setBudgetForm({ ...budgetForm, thresholdPercent: event.target.value })} /></label>
+                </div>
+                <label>Scope<select value={budgetForm.serviceId} onChange={event => setBudgetForm({ ...budgetForm, serviceId: event.target.value })}><option value="">Entire workspace</option>{services.map(service => <option key={service.id} value={service.id}>{service.name}</option>)}</select></label>
+                <button className="primary-button" disabled={busy}>Create budget</button>
+              </form>}
+            </div>
+            {identity.role === 'ADMIN' && <form className="team-form cost-import-form" onSubmit={importCostRecords}>
+              <p className="eyebrow">NORMALIZED COST IMPORT</p><h3>Import cost records</h3>
+              <label>JSON payload<textarea rows={10} required value={costImportText} onChange={event => setCostImportText(event.target.value)} placeholder={'{"records":[{"provider":"AWS","sourceRecordId":"line-001","resourceId":"i-123","billingPeriodStart":"2026-11-01T00:00:00.000Z","costAmount":12.5,"currency":"USD"}]}'}/></label>
+              <button className="primary-button" disabled={busy || !costImportText.trim()}>Import up to 500 records</button>
+              <p className="fine-print">Provider billing APIs and CSV parsing are not connected. Import normalized JSON exports; duplicate source IDs update existing rows.</p>
+            </form>}
+          </div>
         </section>
 
         <section className="workspace-members">
