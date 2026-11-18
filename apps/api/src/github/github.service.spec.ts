@@ -20,7 +20,7 @@ describe('GitHubService webhook ingestion and DORA metrics', () => {
         update: jest.fn(),
       },
       gitHubWebhookDelivery: { create: jest.fn() },
-      gitHubPullRequest: { upsert: jest.fn() },
+      gitHubPullRequest: { upsert: jest.fn(), findMany: jest.fn() },
       deploymentRecord: { upsert: jest.fn(), findUnique: jest.fn().mockResolvedValue(null), findMany: jest.fn() },
       incident: { findMany: jest.fn() },
       $transaction: jest.fn(async (callback: (tx: any) => Promise<unknown>) => callback(prisma)),
