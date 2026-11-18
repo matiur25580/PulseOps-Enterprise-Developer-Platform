@@ -61,3 +61,10 @@ Invitation email delivery, email verification, refresh-token rotation/revocation
 - The shared webhook secret is a deployment secret, never a repository setting or committed value. Configure the same secret in the GitHub webhook settings.
 - Repository-to-service mappings are tenant-scoped; the repository name is globally unique in PulseOps to avoid ambiguous webhook routing across workspaces.
 - GitHub webhook configuration is manual. GitHub App installation/OAuth and automatic webhook provisioning are not implemented.
+
+
+## Runbook and escalation controls
+- Runbook references and escalation policies are scoped by tenant and service; cross-workspace service IDs return not found.
+- Only ADMIN members can create/delete runbooks or change escalation policies. Read access requires authenticated workspace membership.
+- Incident escalation uses a compare-and-set level transition and commits the timeline and audit records in the same serializable transaction.
+- Escalation currently records the selected contact in event metadata; no external notification is sent and no automatic timer is running.
