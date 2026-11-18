@@ -8,10 +8,11 @@ import { DependenciesModule } from './dependencies/dependencies.module';
 import { SlosModule } from './slos/slos.module';
 import { OutboxModule } from './outbox/outbox.module';
 import { ObservabilityModule } from './observability/observability.module';
+import { GitHubModule } from './github/github.module';
 import { MembersModule } from './members/members.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ServicesModule } from './services/services.module';
 import { TeamsModule } from './teams/teams.module';
 
-@Module({ imports: [PrismaModule, OutboxModule, AlertsModule, AuthModule, HealthModule, ServicesModule, TeamsModule, MembersModule, AuditModule, IncidentsModule, DependenciesModule, SlosModule, ObservabilityModule] })
+@Module({ imports: [PrismaModule, OutboxModule, AlertsModule, AuthModule, HealthModule, ServicesModule, TeamsModule, MembersModule, AuditModule, IncidentsModule, DependenciesModule, SlosModule, ObservabilityModule, GitHubModule] })
 export class AppModule {}
