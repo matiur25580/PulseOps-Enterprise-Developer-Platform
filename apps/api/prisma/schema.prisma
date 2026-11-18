@@ -33,6 +33,7 @@ model Tenant {
   incidents   Incident[]
   dependencies ServiceDependency[]
   sloDefinitions SloDefinition[]
+  alertRules AlertRule[]
 
   @@map("tenants")
 }
@@ -224,6 +225,7 @@ model SloDefinition {
   tenant             Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   service            Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   samples            SliSample[]
+  alertRules         AlertRule[]
 
   @@index([tenantId, serviceId])
   @@map("slo_definitions")
@@ -239,4 +241,63 @@ model SliSample {
 
   @@index([sloId, observedAt])
   @@map("sli_samples")
+}
+
+
+model AlertRule {
+  id                  String        @id @default(uuid()) @db.Uuid
+  tenantId            String        @map("tenant_id") @db.Uuid
+  sloId               String        @map("slo_id") @db.Uuid
+  name                String
+  thresholdPercent    Float         @map("threshold_percent")
+  cooldownMinutes     Int           @default(30) @map("cooldown_minutes")
+  enabled             Boolean       @default(true)
+  lastTriggeredAt     DateTime?     @map("last_triggered_at")
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+  tenant              Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  slo                 SloDefinition @relation(fields: [sloId], references: [id], onDelete: Cascade)
+  events              AlertEvent[]
+
+  @@index([tenantId, enabled])
+  @@index([sloId])
+  @@map("alert_rules")
+}
+
+model AlertEvent {
+  id              String      @id @default(uuid()) @db.Uuid
+  ruleId          String      @map("rule_id") @db.Uuid
+  incidentId      String?     @map("incident_id") @db.Uuid
+  observedPercent Float       @map("observed_percent")
+  thresholdPercent Float      @map("threshold_percent")
+  message         String
+  createdAt       DateTime    @default(now()) @map("created_at")
+  rule            AlertRule   @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId, createdAt])
+  @@map("alert_events")
+}
+
+
+model OutboxEvent {
+  id             String    @id @default(uuid()) @db.Uuid
+  eventType      String    @map("event_type")
+  aggregateType  String    @map("aggregate_type")
+  aggregateId    String    @map("aggregate_id") @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  idempotencyKey String    @unique @map("idempotency_key")
+  payload        Json
+  status         String    @default("PENDING")
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(8) @map("max_attempts")
+  availableAt    DateTime  @default(now()) @map("available_at")
+  lockedAt       DateTime? @map("locked_at")
+  processedAt    DateTime? @map("processed_at")
+  lastError      String?   @map("last_error")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@index([status, availableAt, createdAt])
+  @@index([tenantId, createdAt])
+  @@map("outbox_events")
 }
