@@ -1,4 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { createHash, randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
@@ -25,29 +26,31 @@ export class MembersService {
   if(!result.count)throw new NotFoundException('Pending invitation not found');
   return {revoked:true,id};
  }
- async updateRole(tenantId:string,actorId:string,userId:string,input:UpdateMemberRoleDto){
-  const target=await this.prisma.tenantMembership.findUnique({where:{userId_tenantId:{userId,tenantId}}});
-  if(!target)throw new NotFoundException('Workspace member not found');
-  if(target.role==='ADMIN'&&input.role!=='ADMIN'){
-   const admins=await this.prisma.tenantMembership.count({where:{tenantId,role:'ADMIN'}});
-   if(admins<=1)throw new ConflictException('A workspace must retain at least one administrator');
-  }
-  if(actorId===userId&&input.role!=='ADMIN'){
-   const admins=await this.prisma.tenantMembership.count({where:{tenantId,role:'ADMIN'}});
-   if(admins<=1)throw new ConflictException('You cannot remove your own last administrator access');
-  }
-  const updated=await this.prisma.tenantMembership.update({where:{id:target.id},data:{role:input.role},include:{user:{select:{id:true,name:true,email:true}}}});
-  return {id:updated.id,role:updated.role,user:updated.user};
+ async updateRole(tenantId:string,_actorId:string,userId:string,input:UpdateMemberRoleDto){
+  try{return await this.prisma.$transaction(async tx=>{
+   const target=await tx.tenantMembership.findUnique({where:{userId_tenantId:{userId,tenantId}}});
+   if(!target)throw new NotFoundException('Workspace member not found');
+   if(target.role==='ADMIN'&&input.role!=='ADMIN'){
+    const admins=await tx.tenantMembership.count({where:{tenantId,role:'ADMIN'}});
+    if(admins<=1)throw new ConflictException('A workspace must retain at least one administrator');
+   }
+   const updated=await tx.tenantMembership.update({where:{id:target.id},data:{role:input.role},include:{user:{select:{id:true,name:true,email:true}}}});
+   return {id:updated.id,role:updated.role,user:updated.user};
+  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable})}
+  catch(error){if(error instanceof Prisma.PrismaClientKnownRequestError&&error.code==='P2034')throw new ConflictException('Workspace membership changed concurrently; retry the operation');throw error}
  }
  async removeMember(tenantId:string,actorId:string,userId:string){
   if(actorId===userId)throw new ConflictException('You cannot remove your own workspace membership');
-  const target=await this.prisma.tenantMembership.findUnique({where:{userId_tenantId:{userId,tenantId}}});
-  if(!target)throw new NotFoundException('Workspace member not found');
-  if(target.role==='ADMIN'){
-   const admins=await this.prisma.tenantMembership.count({where:{tenantId,role:'ADMIN'}});
-   if(admins<=1)throw new ConflictException('A workspace must retain at least one administrator');
-  }
-  await this.prisma.tenantMembership.delete({where:{id:target.id}});
-  return {removed:true,userId};
+  try{return await this.prisma.$transaction(async tx=>{
+   const target=await tx.tenantMembership.findUnique({where:{userId_tenantId:{userId,tenantId}}});
+   if(!target)throw new NotFoundException('Workspace member not found');
+   if(target.role==='ADMIN'){
+    const admins=await tx.tenantMembership.count({where:{tenantId,role:'ADMIN'}});
+    if(admins<=1)throw new ConflictException('A workspace must retain at least one administrator');
+   }
+   await tx.tenantMembership.delete({where:{id:target.id}});
+   return {removed:true,userId};
+  },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable})}
+  catch(error){if(error instanceof Prisma.PrismaClientKnownRequestError&&error.code==='P2034')throw new ConflictException('Workspace membership changed concurrently; retry the operation');throw error}
  }
 }
