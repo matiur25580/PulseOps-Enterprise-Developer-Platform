@@ -29,7 +29,7 @@ export class RunbooksService {
       return runbook;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('A runbook with this title already exists for the service');
+        throw new ConflictException('A runbook with this title already exists or a primary runbook is already set');
       }
       throw error;
     }
