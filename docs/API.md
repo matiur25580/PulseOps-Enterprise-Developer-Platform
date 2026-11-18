@@ -133,7 +133,7 @@ Merged pull requests are stored from `pull_request` events with action `closed` 
 - `GET /engineering-metrics/dora?windowDays=30` returns workspace DORA indicators for a 7–90 day window.
 - Deployment frequency is successful deployments divided by window days (also returned per week).
 - Lead time is the median time from PR merge to successful deployment, matched by exact merge commit SHA.
-- Change failure rate is failed terminal GitHub deployment states divided by successful plus failed deployment records. This is a webhook-derived proxy and not confirmed incident causality.
+- Change failure rate is failed terminal GitHub deployment states (failure/error) divided by successful plus failed deployment records. Inactive deployments retain their original successful deployment timestamp and are not counted as failures. This is a webhook-derived proxy and not confirmed incident causality.
 - MTTR is the mean time from incident creation to resolution for workspace incidents resolved within the selected window.
 
 Metrics include sample sizes and limitations. Null means there is insufficient matching data; zero is not substituted for missing samples. This integration uses GitHub webhooks, not the GitHub App installation/OAuth flow or GitHub API polling. It does not automatically create GitHub webhooks; administrators configure them in GitHub.
