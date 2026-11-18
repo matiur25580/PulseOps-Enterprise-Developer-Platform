@@ -26,7 +26,9 @@ PulseOps brings service ownership, operational signals, incident workflows, reli
 5. Generate Prisma Client and validate: `pnpm db:generate` and `pnpm --filter @pulseops/api prisma:validate`.
 6. Apply migrations: `pnpm --filter @pulseops/api prisma:migrate`.
 7. Run API unit tests: `pnpm test:api`.
-8. Start API and web in separate terminals: `pnpm dev:api` and `pnpm dev:web`.
+8. Run PostgreSQL integration tests: `pnpm test:integration` (requires the migrated test database in `DATABASE_URL`).
+9. Run browser tests: `pnpm test:browser` (requires the API and web app running, plus Playwright Chromium installed with `pnpm --filter @pulseops/web exec playwright install chromium`).
+10. Start API and web in separate terminals: `pnpm dev:api` and `pnpm dev:web`.
 
 ## Local endpoints
 - Web: http://localhost:3000
@@ -37,6 +39,12 @@ PulseOps brings service ownership, operational signals, incident workflows, reli
 - Teams: `GET/POST/PATCH/DELETE /api/v1/teams` (Bearer token required)
 
 The readiness endpoint checks PostgreSQL and returns HTTP 503 if the database is unavailable. Team and service APIs derive workspace scope from the verified JWT; clients cannot override tenant IDs.
+
+## Automated quality gates
+
+The `Quality Gates` GitHub Actions workflow provisions PostgreSQL 16, generates Prisma Client, applies the schema to an isolated CI database, runs API unit and PostgreSQL integration tests, builds both applications, and executes Playwright Chromium tests against the running API and web UI. The browser suite covers workspace registration/sign-in and Service Catalog create/edit/delete. It does not claim coverage for the Team UI because Team Management currently exists as an API, not a frontend screen.
+
+Integration tests use a dedicated Jest configuration and are intentionally excluded from the fast unit-test command.
 
 ## Environment variables
 See the root `.env.example`, `apps/api/.env.example`, and `apps/web/.env.example`. Environment files are local-only and must not be committed.
