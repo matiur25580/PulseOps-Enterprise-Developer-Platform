@@ -164,3 +164,27 @@ All endpoints require authentication and workspace membership. Cost imports, bud
 - `POST /finops/budgets/evaluate?period=YYYY-MM`: manually evaluate enabled budgets. Threshold events are idempotent per budget, month and threshold.
 
 This milestone accepts normalized JSON cost line items from an export adapter. It does not connect to AWS Cost Explorer, Azure Cost Management, or Google Cloud Billing APIs, and it does not parse provider CSV exports directly. No exchange-rate conversion, forecast, or automatic evaluation scheduler is implemented. Missing source rows return `NO_DATA`, not a fabricated zero-spend signal.
+
+
+Example cost import payload:
+
+```json
+{
+  "records": [
+    {
+      "provider": "AWS",
+      "sourceRecordId": "cur-line-2026-11-0001",
+      "resourceId": "arn:aws:ec2:ap-south-1:123456789012:instance/i-abc123",
+      "resourceName": "payments-api-prod",
+      "region": "ap-south-1",
+      "billingPeriodStart": "2026-11-01T00:00:00.000Z",
+      "costAmount": 18.425,
+      "currency": "USD",
+      "serviceId": "00000000-0000-4000-8000-000000000001",
+      "tags": { "environment": "production", "team": "platform" }
+    }
+  ]
+}
+```
+
+Do not put credentials, access tokens, customer data or other secrets in cost tags.
