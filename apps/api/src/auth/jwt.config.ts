@@ -23,7 +23,7 @@ export function getJwtModuleOptions(env: JwtEnvironment = process.env) {
   return {
     secret,
     signOptions: {
-      expiresIn: '1h' as const,
+      expiresIn: '15m' as const,
       issuer: JWT_ISSUER,
       audience: JWT_AUDIENCE,
     },
