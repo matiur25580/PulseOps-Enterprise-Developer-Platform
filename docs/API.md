@@ -77,3 +77,13 @@ The API calculates measured SLI percentage and remaining error-budget percentage
 - HTTP responses include x-trace-id. Incoming valid W3C traceparent trace IDs are propagated; otherwise a new trace ID is generated. Structured JSON request events are written to stdout.
 
 Metrics are held in process memory and reset on restart; they are not a durable or horizontally aggregated time series. An OTLP/OpenTelemetry collector, external metrics backend, alerting and service-level telemetry adapters are future integration work.
+
+## SLO alerting
+All routes require authentication and use the authenticated workspace scope.
+- GET /alerts: list alert rules, their SLO/service, and recent events.
+- POST /alerts/slos/:sloId/rules (ADMIN): create a rule with { "name": "Checkout availability", "thresholdPercent": 99.5, "cooldownMinutes": 30 }. The measured SLI at or below the threshold triggers an incident. Cooldown is 1–1440 minutes.
+- PATCH /alerts/:id/enabled (ADMIN): enable or disable a rule with { "enabled": true }.
+- POST /alerts/evaluate (ADMIN): evaluate all enabled rules against samples in each SLO rolling window. Returns NO_DATA, HEALTHY, COOLDOWN, or TRIGGERED per rule.
+- GET /alerts/:id/events: list the latest 100 alert events for a rule.
+
+When a rule breaches, the evaluator creates a HIGH incident, timeline event, alert event, updates the rule cooldown timestamp, and writes an audit record in one PostgreSQL transaction. Repeated triggers are suppressed during cooldown. Evaluation is currently an authenticated manual operation; scheduled evaluation, delivery channels (email/Slack/PagerDuty), burn-rate windows, and distributed worker execution are not yet implemented.
