@@ -45,7 +45,7 @@ PulseOps handles operational metadata and potentially sensitive infrastructure c
 - Incident reads and mutations derive tenant scope from the verified identity; assignees must hold a membership in that workspace.
 - Service dependency reads and mutations are tenant-scoped; both endpoints must belong to the same workspace, self-edges and detected cycles are rejected.
 - SLO definitions and SLI samples are tenant-scoped; only ADMINs can create objectives or submit samples.
-- The Prometheus metrics endpoint supports an optional METRICS_TOKEN bearer check; configure it in production or restrict the endpoint at the network layer.
+- The Prometheus metrics endpoint requires a METRICS_TOKEN bearer check in production; application startup fails if it is missing.
 - Request logs contain route/method/status/duration and trace ID only; authorization headers and request bodies are not logged.
 - Incident state transitions append timeline events. Audit records capture Team/Service mutations, invitation and membership administration, and incident lifecycle actions; the API exposes no audit mutation or deletion route. Audit viewing is ADMIN-only.
 
