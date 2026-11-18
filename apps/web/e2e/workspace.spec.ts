@@ -51,7 +51,7 @@ test('workspace owner can manage services and members while invited members get 
   await page.getByLabel('Service name').fill('Browser Payments API');
   await page.getByLabel('Owning team').selectOption({ label: 'Browser Platform Team' });
   await page.getByLabel('Slug').fill(`browser-payments-${suffix}`);
-  await page.getByLabel('Description').fill('Created by a real browser test');
+  await page.getByLabel('Description', { exact: true }).fill('Created by a real browser test');
   await page.getByRole('button', { name: /Register service/ }).click();
   await expect(page.getByRole('heading', { name: 'Browser Payments API' })).toBeVisible();
   await expect(page.getByText('Owner: Browser Platform Team')).toBeVisible();
