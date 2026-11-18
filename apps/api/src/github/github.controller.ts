@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Post, Query, Req, UseGuards, RawBodyRequest } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, HttpCode, Param, ParseUUIDPipe, Post, Query, Req, UseGuards, RawBodyRequest } from '@nestjs/common';
 import { Request } from 'express';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthenticatedUser, JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -28,7 +28,7 @@ export class GitHubRepositoriesController {
     return this.github.createRepository(user.tenantId, user.sub, body);
   }
   @Delete(':id') @Roles('ADMIN')
-  disable(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+  disable(@CurrentUser() user: AuthenticatedUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.github.disableRepository(user.tenantId, user.sub, id);
   }
 }
