@@ -48,6 +48,10 @@ jobs:
         run: pnpm --filter @pulseops/api prisma:validate
       - name: Apply versioned database migrations
         run: pnpm --filter @pulseops/api exec prisma migrate deploy
+      - name: Typecheck API
+        run: pnpm --filter @pulseops/api typecheck
+      - name: Typecheck web
+        run: pnpm --filter @pulseops/web typecheck
       - name: Run API unit tests
         run: pnpm test:api
       - name: Run PostgreSQL integration tests
@@ -60,7 +64,7 @@ jobs:
         run: |
           (pnpm dev:api > /tmp/pulseops-api.log 2>&1 &)
           for attempt in {1..30}; do
-            if curl --fail http://127.0.0.1:4000/api/v1/health; then exit 0; fi
+            if curl --fail http://127.0.0.1:4000/api/v1/ready; then exit 0; fi
             sleep 2
           done
           cat /tmp/pulseops-api.log
