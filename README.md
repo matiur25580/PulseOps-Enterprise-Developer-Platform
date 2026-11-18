@@ -38,7 +38,9 @@ PulseOps brings service ownership, operational signals, incident workflows, reli
 - Service Catalog: `GET/POST/PATCH/DELETE /api/v1/services` (Bearer token required)
 - Teams: `GET/POST/PATCH/DELETE /api/v1/teams` (Bearer token required; writes require ADMIN)
 - Members: `GET /api/v1/members`, `POST /api/v1/members/invitations`, `PATCH /api/v1/members/:userId/role`, and `DELETE /api/v1/members/:userId` (administrative actions require ADMIN).
-- Invitation acceptance: `POST /api/v1/auth/accept-invitation` (single-use seven-day token; email delivery is not configured yet).\n- Incidents: `GET/POST /api/v1/incidents`, `PATCH /api/v1/incidents/:id/assign`, and `POST /api/v1/incidents/:id/acknowledge` or `/resolve`.\n- Audit trail: `GET /api/v1/audit-logs` (ADMIN only; records privileged workspace and incident actions).
+- Invitation acceptance: `POST /api/v1/auth/accept-invitation` (single-use seven-day token; email delivery is not configured yet).
+- Incidents: `GET/POST /api/v1/incidents`, `PATCH /api/v1/incidents/:id/assign`, and `POST /api/v1/incidents/:id/acknowledge` or `/resolve`.
+- Audit trail: `GET /api/v1/audit-logs` (ADMIN only; records privileged workspace and incident actions).
 
 The readiness endpoint checks PostgreSQL and returns HTTP 503 if the database is unavailable. Team and service APIs derive workspace scope from the verified JWT; clients cannot override tenant IDs.
 
