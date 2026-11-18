@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Build output
+.next/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local data and editor files
+data/
+*.log
+.DS_Store
+.idea/
+.vscode/

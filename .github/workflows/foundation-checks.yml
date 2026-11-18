@@ -1,0 +1,41 @@
+name: Foundation checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  repository-integrity:
+    name: Repository integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check required project documents
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_files=(
+            README.md
+            CONTRIBUTING.md
+            docs/ARCHITECTURE.md
+            docs/DATABASE.md
+            docs/API.md
+            docs/SECURITY.md
+            docs/DEPLOYMENT.md
+            docs/ROADMAP.md
+            docker-compose.yml
+            .env.example
+          )
+          for file in "${required_files[@]}"; do
+            test -s "$file" || { echo "Missing or empty: $file"; exit 1; }
+          done
+
+      - name: Check whitespace errors
+        run: git diff --check
