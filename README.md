@@ -4,95 +4,54 @@
 
 PulseOps brings service ownership, operational signals, incident workflows, reliability objectives, and cloud-cost visibility into one engineering workspace.
 
-> **Project status:** The repository includes a Next.js application shell, NestJS API, PostgreSQL/Prisma schema, JWT-based authentication, tenant-scoped Service Catalog CRUD, and CI build/schema checks. Production hardening (managed secrets, email verification, rate limiting, refresh-token/session management, and end-to-end tests) remains outstanding.
+> **Project status:** The repository includes a Next.js portal shell, NestJS API, PostgreSQL/Prisma schema, JWT authentication, tenant-scoped Service Catalog CRUD, Team Management API, and CI build/schema/unit-test checks. Production hardening (managed secrets, email verification, rate limiting, refresh-token/session management, and end-to-end tests) remains outstanding.
 
 ## Current stack
-
 - **Web:** Next.js 15, React 19, TypeScript
 - **API:** NestJS 10, TypeScript
 - **Data:** PostgreSQL 16, Prisma 6
 - **Local infrastructure:** Docker Compose, Redis
-- **CI:** GitHub Actions
+- **CI:** GitHub Actions, Jest, ts-jest
 
 ## Prerequisites
-
 - Node.js 20 or newer
 - pnpm 10
 - Docker Engine/Desktop with Compose
 
 ## Local setup
+1. Install dependencies: `pnpm install`.
+2. Create local environment files: `cp .env.example .env` and `cp apps/api/.env.example apps/api/.env`.
+3. Start PostgreSQL and Redis: `docker compose up -d postgres redis`.
+4. Set a strong local `JWT_SECRET` in `apps/api/.env`. Never use the example value outside local development.
+5. Generate Prisma Client and validate: `pnpm db:generate` and `pnpm --filter @pulseops/api prisma:validate`.
+6. Apply migrations: `pnpm --filter @pulseops/api prisma:migrate`.
+7. Run API unit tests: `pnpm test:api`.
+8. Start API and web in separate terminals: `pnpm dev:api` and `pnpm dev:web`.
 
-1. Install dependencies:
+## Local endpoints
+- Web: http://localhost:3000
+- API liveness: http://localhost:4000/api/v1/health
+- API readiness: http://localhost:4000/api/v1/ready
+- Authentication: `POST /api/v1/auth/register`, `POST /api/v1/auth/login`
+- Service Catalog: `GET/POST/PATCH/DELETE /api/v1/services` (Bearer token required)
+- Teams: `GET/POST/PATCH/DELETE /api/v1/teams` (Bearer token required)
 
-   ```bash
-   pnpm install
-   ```
-
-2. Create local environment files:
-
-   ```bash
-   cp .env.example .env
-   cp apps/api/.env.example apps/api/.env
-   ```
-
-   The root file configures Docker Compose. The API file configures NestJS and Prisma. Use local-only credentials and never commit real secrets.
-
-3. Start PostgreSQL and Redis:
-
-   ```bash
-   docker compose up -d postgres redis
-   ```
-
-4. Set a strong local `JWT_SECRET` in `apps/api/.env` before starting the API. Never use the example value outside local development.
-
-5. Generate Prisma Client and validate the schema:
-
-   ```bash
-   pnpm db:generate
-   pnpm --filter @pulseops/api prisma:validate
-   ```
-
-6. Apply all database migrations:
-
-   ```bash
-   pnpm --filter @pulseops/api prisma:migrate
-   ```
-
-7. Start the API and web app in separate terminals:
-
-   ```bash
-   pnpm dev:api
-   pnpm dev:web
-   ```
-
-8. Open:
-   - Web: http://localhost:3000
-   - API liveness: http://localhost:4000/api/v1/health
-   - API readiness: http://localhost:4000/api/v1/ready
-   - Auth registration/login: `POST http://localhost:4000/api/v1/auth/register` and `/auth/login`
-   - Service Catalog: `GET/POST http://localhost:4000/api/v1/services` (Bearer token required)
-
-The readiness endpoint checks PostgreSQL and returns HTTP 503 if the database is unavailable.
+The readiness endpoint checks PostgreSQL and returns HTTP 503 if the database is unavailable. Team and service APIs derive workspace scope from the verified JWT; clients cannot override tenant IDs.
 
 ## Environment variables
-
 See the root `.env.example`, `apps/api/.env.example`, and `apps/web/.env.example`. Environment files are local-only and must not be committed.
 
 ## Planned capabilities
-
-- Developer portal and service catalog
 - Deployment and CI/CD visibility
 - Metrics, logs, and traces
 - Incident management and runbooks
 - SLI/SLO and error-budget tracking
 - FinOps and cloud cost allocation
 - AI-assisted incident analysis with human-approved remediation
-- Tenant-aware access control and audit history
 
 See [ROADMAP.md](docs/ROADMAP.md) for implementation status. Planned features are not represented as completed functionality.
 
 ## Engineering principles
-
 1. Build tested vertical slices before splitting into distributed services.
 2. Label live, mocked, and planned integrations honestly.
 3. Enforce authorization in the API, not only in the UI.
@@ -101,7 +60,6 @@ See [ROADMAP.md](docs/ROADMAP.md) for implementation status. Planned features ar
 6. Instrument services with logs, metrics, and traces.
 
 ## Documentation
-
 - [Architecture](docs/ARCHITECTURE.md)
 - [Database design](docs/DATABASE.md)
 - [API conventions](docs/API.md)
@@ -111,5 +69,4 @@ See [ROADMAP.md](docs/ROADMAP.md) for implementation status. Planned features ar
 - [Contributing](CONTRIBUTING.md)
 
 ## License
-
 A license has not yet been selected. Until one is added, all rights are reserved by the repository owner.

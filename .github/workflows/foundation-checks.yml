@@ -50,6 +50,9 @@ jobs:
             apps/api/src/main.ts
             apps/api/src/auth/auth.service.ts
             apps/api/src/services/services.controller.ts
+            apps/api/src/teams/teams.controller.ts
+            apps/api/src/teams/teams.service.spec.ts
+            apps/api/src/services/services.service.spec.ts
             apps/api/prisma/migrations/202611180002_auth_service_catalog/migration.sql
             apps/web/src/app/page.tsx
           )
@@ -61,6 +64,9 @@ jobs:
         run: pnpm --filter @pulseops/api prisma:validate
         env:
           DATABASE_URL: postgresql://pulseops:local-only@localhost:5432/pulseops?schema=public
+
+      - name: Run API unit tests
+        run: pnpm test:api
 
       - name: Build applications
         run: pnpm build
