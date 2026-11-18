@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Restore a custom-format backup into an EMPTY target database.
+# Restore a verified custom-format backup into an EMPTY target database.
 # Required: TARGET_DATABASE_URL and BACKUP_FILE.
 # This script intentionally does not use --clean or drop existing objects.
 
@@ -14,13 +14,14 @@ if [[ -z "${BACKUP_FILE:-}" || ! -f "$BACKUP_FILE" ]]; then
   exit 2
 fi
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 command -v pg_restore >/dev/null 2>&1 || {
   echo "ERROR: pg_restore is required (install PostgreSQL client tools)." >&2
   exit 2
 }
 
-echo "Checking backup archive..."
-pg_restore --list "$BACKUP_FILE" >/dev/null
+echo "Verifying backup checksum and archive contents..."
+bash "$SCRIPT_DIR/postgres-backup-verify.sh" "$BACKUP_FILE"
 
 echo "Restoring into the supplied target. The target must be empty."
 pg_restore \
