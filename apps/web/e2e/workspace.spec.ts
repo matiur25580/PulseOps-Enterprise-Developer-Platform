@@ -13,10 +13,10 @@ test('workspace owner can register, create, edit and delete a service, then sign
   await page.getByLabel('Workspace name').fill(`Browser Workspace ${suffix}`);
   await page.getByRole('button', { name: /Create workspace/ }).last().click();
 
-  await expect(page.getByRole('heading', { name: 'Your services.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your workspace.' })).toBeVisible();
   const workspaceLine = await page.locator('.workspace-head .muted').innerText();
   const tenantSlug = workspaceLine.split(' · ')[0];
-  await expect(page.getByText('Workspace created. Your Service Catalog is ready.')).toBeVisible();
+  await expect(page.getByText('Workspace created. Your Service Catalog and Team Management are ready.')).toBeVisible();
 
   await page.getByLabel('Team name').fill('Browser Platform Team');
   await page.getByLabel('Team contact email').fill('platform-browser@pulseops.test');
@@ -56,6 +56,6 @@ test('workspace owner can register, create, edit and delete a service, then sign
   await page.getByLabel('Password').fill(password);
   await page.getByLabel('Workspace slug').fill(tenantSlug);
   await page.getByRole('button', { name: /Sign in/ }).last().click();
-  await expect(page.getByRole('heading', { name: 'Your services.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your workspace.' })).toBeVisible();
   await expect(page.getByText('Signed in successfully.')).toBeVisible();
 });
