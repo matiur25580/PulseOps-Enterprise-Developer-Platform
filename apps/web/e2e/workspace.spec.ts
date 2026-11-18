@@ -21,7 +21,7 @@ test('workspace owner can manage services and members while invited members get 
   await page.getByLabel('Team name').fill('Browser Platform Team');
   await page.getByLabel('Team contact email').fill('platform-browser@pulseops.test');
   await page.getByRole('button', { name: /Create team/ }).click();
-  await expect(page.getByText('Browser Platform Team')).toBeVisible();
+  await expect(page.locator('.team-row').filter({ hasText: 'Browser Platform Team' })).toBeVisible();
   const memberEmail = `member-browser-${suffix}@pulseops.test`;
   await page.getByLabel('Work email').fill(memberEmail);
   await page.getByRole('button', { name: /Create invitation/ }).click();
