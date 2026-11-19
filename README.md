@@ -161,3 +161,9 @@ A license has not yet been selected. Until one is added, all rights are reserved
 Connect a service to its GitHub repository as an ADMIN, set `GITHUB_WEBHOOK_SECRET` in the API environment, and configure the repository's webhook to send JSON `pull_request` and `deployment_status` events to `/api/v1/integrations/github/webhook`. The DORA endpoint returns null for metrics without sufficient source data; see [API documentation](docs/API.md) for metric definitions and limitations.
 
 Service-linked incidents can be escalated manually through the API. The selected escalation contact is recorded in the incident timeline and audit log; external notification delivery and automatic timers are intentionally not claimed yet.
+
+## Live Demo
+
+**Frontend:** [Open Live Demo](https://pulse-ops-enterprise-developer-plat.vercel.app)
+
+> This link points to the deployed frontend. Features that depend on the API, database, email, file storage, or other external services may require the corresponding backend services and environment variables to be configured. Use test data only; this demo is not a production service.
