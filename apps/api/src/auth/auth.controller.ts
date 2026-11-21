@@ -1,15 +1,15 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { AuthenticatedUser, JwtAuthGuard } from './jwt-auth.guard';
+import { assertTrustedOrigin } from '../security/trusted-origin';
 type AuthRequest=Request&{user?:AuthenticatedUser};
 const COOKIE='pulseops_refresh',MAX_AGE=30*24*60*60;
 function readCookie(req:Request){const entry=req.headers.cookie?.split(';').map(v=>v.trim()).find(v=>v.startsWith(COOKIE+'='));if(!entry)return undefined;try{return decodeURIComponent(entry.slice(COOKIE.length+1));}catch{return undefined;}}
 function setCookie(res:Response,token:string){const prod=process.env.NODE_ENV==='production';res.setHeader('Set-Cookie',`${COOKIE}=${encodeURIComponent(token)}; HttpOnly; Path=/api/v1/auth; Max-Age=${MAX_AGE}; SameSite=${prod?'None':'Lax'}${prod?'; Secure':''}`);}
-function assertTrustedOrigin(req:Request){const origin=req.headers.origin;if(origin&&process.env.WEB_ORIGIN&&origin!==process.env.WEB_ORIGIN)throw new ForbiddenException('Untrusted request origin');if(origin&&process.env.NODE_ENV==='production'&&!process.env.WEB_ORIGIN)throw new ForbiddenException('WEB_ORIGIN must be configured for cookie-authenticated requests');}
 function clearCookie(res:Response){const prod=process.env.NODE_ENV==='production';res.setHeader('Set-Cookie',`${COOKIE}=; HttpOnly; Path=/api/v1/auth; Max-Age=0; SameSite=${prod?'None; Secure':'Lax'}`);}
 function hide<T extends{refreshToken:string}>(r:T){const{refreshToken,...body}=r;return{refreshToken,body};}
 @Controller('auth')
