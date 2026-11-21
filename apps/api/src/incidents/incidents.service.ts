@@ -39,31 +39,49 @@ export class IncidentsService {
     const incident = await this.find(tenantId, id);
     if (incident.status === 'RESOLVED') throw new ConflictException('Resolved incidents cannot be reassigned');
     await this.assertMember(tenantId, input.assignedToUserId);
-    const updated = await this.prisma.incident.update({
-      where: { id }, data: { assignedToUserId: input.assignedToUserId },
-      include: { assignee: { select: { id: true, name: true, email: true } }, events: { orderBy: { createdAt: 'asc' } } },
-    });
-    await this.prisma.incidentEvent.create({ data: { incidentId: id, actorId, eventType: 'ASSIGNED', message: 'Incident assigned', metadata: { assignedToUserId: input.assignedToUserId } } });
-    await this.audit.record({ tenantId, actorId, action: 'INCIDENT_ASSIGNED', entityType: 'INCIDENT', entityId: id, metadata: { assignedToUserId: input.assignedToUserId } });
-    return updated;
+    return this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.incident.updateMany({
+        where: { id, tenantId, status: { not: IncidentStatus.RESOLVED } },
+        data: { assignedToUserId: input.assignedToUserId },
+      });
+      if (claimed.count !== 1) throw new ConflictException('Incident changed while assignment was being applied; refresh and retry');
+      await tx.incidentEvent.create({ data: { incidentId: id, actorId, eventType: 'ASSIGNED', message: 'Incident assigned', metadata: { assignedToUserId: input.assignedToUserId } } });
+      await tx.auditLog.create({ data: { tenantId, actorId, action: 'INCIDENT_ASSIGNED', entityType: 'INCIDENT', entityId: id, metadata: { assignedToUserId: input.assignedToUserId } } });
+      return tx.incident.findFirst({
+        where: { id, tenantId },
+        include: { assignee: { select: { id: true, name: true, email: true } }, events: { orderBy: { createdAt: 'asc' } } },
+      });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
   async acknowledge(tenantId: string, actorId: string, id: string) {
     const incident = await this.find(tenantId, id);
     if (incident.status !== 'OPEN') throw new ConflictException('Only open incidents can be acknowledged');
-    const updated = await this.prisma.incident.update({ where: { id }, data: { status: IncidentStatus.ACKNOWLEDGED, acknowledgedAt: new Date() } });
-    await this.prisma.incidentEvent.create({ data: { incidentId: id, actorId, eventType: 'ACKNOWLEDGED', message: 'Incident acknowledged' } });
-    await this.audit.record({ tenantId, actorId, action: 'INCIDENT_ACKNOWLEDGED', entityType: 'INCIDENT', entityId: id });
-    return updated;
+    return this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.incident.updateMany({
+        where: { id, tenantId, status: IncidentStatus.OPEN },
+        data: { status: IncidentStatus.ACKNOWLEDGED, acknowledgedAt: new Date() },
+      });
+      if (claimed.count !== 1) throw new ConflictException('Incident changed while acknowledgement was being applied; refresh and retry');
+      await tx.incidentEvent.create({ data: { incidentId: id, actorId, eventType: 'ACKNOWLEDGED', message: 'Incident acknowledged' } });
+      await tx.auditLog.create({ data: { tenantId, actorId, action: 'INCIDENT_ACKNOWLEDGED', entityType: 'INCIDENT', entityId: id } });
+      return tx.incident.findFirst({ where: { id, tenantId } });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
   async resolve(tenantId: string, actorId: string, id: string, message?: string) {
     const incident = await this.find(tenantId, id);
     if (incident.status === 'RESOLVED') throw new ConflictException('Incident is already resolved');
-    const updated = await this.prisma.incident.update({ where: { id }, data: { status: IncidentStatus.RESOLVED, resolvedAt: new Date() } });
-    await this.prisma.incidentEvent.create({ data: { incidentId: id, actorId, eventType: 'RESOLVED', message: message?.trim() || 'Incident resolved' } });
-    await this.audit.record({ tenantId, actorId, action: 'INCIDENT_RESOLVED', entityType: 'INCIDENT', entityId: id });
-    return updated;
+    return this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.incident.updateMany({
+        where: { id, tenantId, status: { not: IncidentStatus.RESOLVED } },
+        data: { status: IncidentStatus.RESOLVED, resolvedAt: new Date() },
+      });
+      if (claimed.count !== 1) throw new ConflictException('Incident changed while resolution was being applied; refresh and retry');
+      await tx.incidentEvent.create({ data: { incidentId: id, actorId, eventType: 'RESOLVED', message: message?.trim() || 'Incident resolved' } });
+      await tx.auditLog.create({ data: { tenantId, actorId, action: 'INCIDENT_RESOLVED', entityType: 'INCIDENT', entityId: id } });
+      return tx.incident.findFirst({ where: { id, tenantId } });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
 
