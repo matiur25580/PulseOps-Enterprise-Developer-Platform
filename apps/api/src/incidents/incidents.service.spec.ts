@@ -10,6 +10,7 @@ describe('IncidentsService escalation workflow', () => {
       incident: { findFirst: jest.fn(), updateMany: jest.fn() },
       escalationPolicy: { findUnique: jest.fn() },
       incidentEvent: { create: jest.fn() },
+      tenantMembership: { findUnique: jest.fn() },
       auditLog: { create: jest.fn() },
       $transaction: jest.fn(async (callback: (tx: any) => Promise<unknown>) => callback(prisma)),
     };
@@ -56,5 +57,73 @@ describe('IncidentsService escalation workflow', () => {
     prisma.incident.updateMany.mockResolvedValue({ count: 0 });
     await expect(service.escalate('tenant-1', 'actor-1', 'incident-1')).rejects.toBeInstanceOf(ConflictException);
     expect(prisma.incidentEvent.create).not.toHaveBeenCalled();
+  });
+
+  it('acknowledges an incident with its event and audit entry in one transaction', async () => {
+    prisma.incident.findFirst.mockResolvedValueOnce({ id: 'incident-1', status: 'OPEN' }).mockResolvedValueOnce({ id: 'incident-1', status: 'ACKNOWLEDGED' });
+    prisma.incident.updateMany.mockResolvedValue({ count: 1 });
+
+    await service.acknowledge('tenant-1', 'actor-1', 'incident-1');
+
+    expect(prisma.incident.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'incident-1', tenantId: 'tenant-1', status: 'OPEN' },
+    }));
+    expect(prisma.incidentEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ eventType: 'ACKNOWLEDGED' }),
+    }));
+    expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ action: 'INCIDENT_ACKNOWLEDGED' }),
+    }));
+    expect(prisma.$transaction).toHaveBeenCalled();
+  });
+
+  it('rejects a stale acknowledgement without writing an event or audit entry', async () => {
+    prisma.incident.findFirst.mockResolvedValue({ id: 'incident-1', status: 'OPEN' });
+    prisma.incident.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(service.acknowledge('tenant-1', 'actor-1', 'incident-1')).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.incidentEvent.create).not.toHaveBeenCalled();
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('resolves an incident atomically and rejects concurrent resolution attempts', async () => {
+    prisma.incident.findFirst.mockResolvedValueOnce({ id: 'incident-1', status: 'ACKNOWLEDGED' }).mockResolvedValueOnce({ id: 'incident-1', status: 'RESOLVED' });
+    prisma.incident.updateMany.mockResolvedValueOnce({ count: 1 });
+
+    await service.resolve('tenant-1', 'actor-1', 'incident-1', '  fixed  ');
+    expect(prisma.incident.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'incident-1', tenantId: 'tenant-1', status: { not: 'RESOLVED' } },
+    }));
+    expect(prisma.incidentEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ eventType: 'RESOLVED', message: 'fixed' }),
+    }));
+    expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ action: 'INCIDENT_RESOLVED' }),
+    }));
+
+    prisma.incident.findFirst.mockResolvedValue({ id: 'incident-1', status: 'ACKNOWLEDGED' });
+    prisma.incident.updateMany.mockResolvedValueOnce({ count: 0 });
+    prisma.incidentEvent.create.mockClear();
+    prisma.auditLog.create.mockClear();
+    await expect(service.resolve('tenant-1', 'actor-1', 'incident-1')).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.incidentEvent.create).not.toHaveBeenCalled();
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('assigns only unresolved incidents and commits history and audit together', async () => {
+    prisma.incident.findFirst.mockResolvedValueOnce({ id: 'incident-1', status: 'ACKNOWLEDGED' }).mockResolvedValueOnce({ id: 'incident-1', status: 'ACKNOWLEDGED', assignedToUserId: 'user-2' });
+    prisma.tenantMembership.findUnique.mockResolvedValue({ id: 'membership-1' });
+    prisma.incident.updateMany.mockResolvedValue({ count: 1 });
+
+    await service.assign('tenant-1', 'actor-1', 'incident-1', { assignedToUserId: 'user-2' } as any);
+    expect(prisma.incident.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'incident-1', tenantId: 'tenant-1', status: { not: 'RESOLVED' } },
+    }));
+    expect(prisma.incidentEvent.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ eventType: 'ASSIGNED' }),
+    }));
+    expect(prisma.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ action: 'INCIDENT_ASSIGNED' }),
+    }));
   });
 });
