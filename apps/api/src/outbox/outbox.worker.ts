@@ -58,6 +58,7 @@ export class OutboxWorker implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  // Claim one due event atomically; SKIP LOCKED lets concurrent workers poll without processing the same row.
   private async claimOne(): Promise<ClaimedEvent | null> {
     const staleBefore = new Date(Date.now() - 5 * 60 * 1000);
     await this.prisma.$executeRaw(Prisma.sql`
