@@ -9,6 +9,7 @@ import { CostRecordDto } from './dto/cost-record.dto';
 export class FinopsService {
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
 
+  // Upsert by tenant, provider, and source ID makes repeated imports safe and keeps records workspace-scoped.
   async importRecords(tenantId: string, actorId: string, records: CostRecordDto[]) {
     const serviceIds = [...new Set(records.map(row => row.serviceId).filter((id): id is string => Boolean(id)))];
     if (serviceIds.length) {
