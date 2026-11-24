@@ -35,6 +35,7 @@ export class IncidentsService {
     return incident;
   }
 
+  // A conditional update inside a serializable transaction prevents competing assignments from overwriting each other.
   async assign(tenantId: string, actorId: string, id: string, input: AssignIncidentDto) {
     const incident = await this.find(tenantId, id);
     if (incident.status === 'RESOLVED') throw new ConflictException('Resolved incidents cannot be reassigned');
