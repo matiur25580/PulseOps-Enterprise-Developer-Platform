@@ -2,168 +2,229 @@
 
 **An AI-assisted developer platform for cloud operations, observability, incident response, SRE, and FinOps.**
 
-PulseOps brings service ownership, operational signals, incident workflows, reliability objectives, and cloud-cost visibility into one engineering workspace.
+PulseOps brings service ownership, operational signals, incident workflows, reliability objectives, delivery intelligence, and cloud-cost visibility into one engineering workspace.
 
-> **Project status:** The repository includes a Next.js portal, NestJS API, PostgreSQL/Prisma schema, JWT authentication with rotating refresh sessions and server-side session revocation, database-backed authentication rate limits, security headers, tenant-scoped Service Catalog and Team Management, workspace invitations, ADMIN/MEMBER RBAC, incident lifecycle management, append-only audit events, service dependency graph, SLI/SLO and error budgets, Prometheus-compatible process metrics, W3C trace context with optional OTLP export, tenant-scoped SLO alerting with a PostgreSQL transactional outbox, GitHub webhook-based deployment tracking and DORA metrics, FinOps cost imports and budgets, service runbooks and escalation workflows, and GitHub Actions quality gates for API unit tests, PostgreSQL integration tests, builds, and Playwright browser tests. Some enterprise integrations (such as SAML/SCIM, managed cloud billing ingestion, outbound email, and AI-assisted remediation) remain planned or require external configuration; see the roadmap.
+<p align="center">
+  <a href="https://pulse-ops-enterprise-developer-plat.vercel.app"><strong>Live Demo</strong></a>
+  ·
+  <a href="docs/ARCHITECTURE.md"><strong>Architecture</strong></a>
+  ·
+  <a href="docs/ROADMAP.md"><strong>Roadmap</strong></a>
+  ·
+  <a href="CONTRIBUTING.md"><strong>Contributing</strong></a>
+</p>
 
+> **Project status:** This is an actively developed portfolio project, not a production-ready managed service. The repository contains working application slices alongside integrations and capabilities that are still planned or require external configuration. The live demo may not have every backend dependency configured; use test data only.
 
+## At a glance
 
-## Product dashboard gallery
+| Area | Current implementation |
+| --- | --- |
+| Web application | Next.js 15, React 19, TypeScript |
+| API | NestJS 10, TypeScript |
+| Data layer | PostgreSQL 16, Prisma 6 |
+| Local infrastructure | Docker Compose, Redis |
+| Authentication | JWT access tokens, rotating refresh sessions, server-side revocation |
+| Authorization | Workspace isolation and ADMIN/MEMBER roles |
+| Quality | Jest, PostgreSQL integration tests, Playwright, GitHub Actions |
 
-The following product UI concepts illustrate the main PulseOps workflows. They are **illustrative dashboard designs**, not claims that every screen or integration is currently live. Each dashboard is shown at full width in a single vertical column for easy browsing.
+## What works today
 
-### 1. Platform Overview
-A unified view of service health, uptime, active incidents, and delivery activity.
+- **Workspace and access management** — registration and sign-in, tenant-scoped service and team management, invitations, role changes, membership removal, and ADMIN/MEMBER authorization.
+- **Service catalog** — service ownership, criticality, and tenant-scoped dependency relationships with cycle prevention.
+- **Incident workflows** — incident creation, assignment, acknowledgement, resolution, timeline events, and audited manual escalation.
+- **Reliability workflows** — persisted service-level indicators and objectives, rolling-window calculations, error-budget reporting, SLO alert rules, and transactional outbox processing. SLI samples are ingested manually.
+- **Observability foundation** — structured HTTP request logs, trace ID propagation, W3C trace context, optional OTLP/HTTP span export, and Prometheus-compatible process metrics.
+- **Delivery intelligence** — GitHub webhook ingestion for merged pull requests and deployment statuses, plus DORA calculations with sample sizes and documented definitions.
+- **FinOps foundation** — normalized cost-record imports, service allocation, workspace/service budgets, and manual budget evaluation.
+- **Operational governance** — append-only audit events, service runbook references, escalation policies, and an ADMIN-only audit viewer.
 
+### Integration status and limitations
+
+Some workflows are intentionally partial. OTLP export requires an external collector; process metrics are not durably aggregated; SLI samples and budget evaluations are manual; GitHub webhooks require manual setup; and cost imports use normalized JSON rather than provider billing APIs. Email delivery, automatic escalation timers, GitHub App OAuth, managed cloud billing ingestion, and AI-assisted incident analysis/remediation are not currently implemented.
+
+See the [roadmap](docs/ROADMAP.md) for the detailed status of each phase.
+
+## Product UI concepts
+
+The images below are **illustrative dashboard designs** that communicate intended workflows. They are not evidence that every screen or integration is fully implemented.
+
+<details>
+<summary><strong>Explore the dashboard gallery</strong> (12 concepts)</summary>
+
+### Platform overview
 ![PulseOps Platform Overview dashboard](docs/images/dashboard-overview.svg)
 
-### 2. Service Catalog & Dependencies
-Discover services, ownership, criticality, health, and upstream/downstream relationships.
-
+### Service catalog and dependencies
 ![PulseOps Service Catalog dashboard](docs/images/dashboard-service-catalog.svg)
 
-### 3. Incident Command Center
-Coordinate severity, impact, responders, investigation progress, and incident timelines.
-
+### Incident command center
 ![PulseOps Incident Command Center dashboard](docs/images/dashboard-incident-command.svg)
 
-### 4. SLO & Error Budgets
-Track availability objectives, error-budget consumption, and reliability burn rates.
-
+### SLOs and error budgets
 ![PulseOps SLO and Error Budgets dashboard](docs/images/dashboard-slo-reliability.svg)
 
-### 5. Observability Explorer
-Explore metrics, logs, latency, and distributed trace context in one workspace.
-
+### Observability explorer
 ![PulseOps Observability Explorer dashboard](docs/images/dashboard-observability.svg)
 
-### 6. Alert Management
-Review alert rules, active notifications, resolved events, and delivery channels.
-
+### Alert management
 ![PulseOps Alert Management dashboard](docs/images/dashboard-alert-management.svg)
 
-### 7. Deployment Intelligence
-Understand deployment frequency, lead time, change failure rate, and release flow.
-
+### Deployment intelligence
 ![PulseOps Deployment Intelligence dashboard](docs/images/dashboard-deployment-intelligence.svg)
 
-### 8. FinOps & Cloud Costs
-Review service-level cost allocation, budget utilization, and spending forecasts.
-
+### FinOps and cloud costs
 ![PulseOps FinOps dashboard](docs/images/dashboard-finops.svg)
 
-### 9. Team & Access Management
-Manage workspace members, roles, and least-privilege access at a glance.
-
+### Team and access management
 ![PulseOps Team and Access Management dashboard](docs/images/dashboard-team-access.svg)
 
-### 10. Audit & Security
-Inspect security posture and a searchable trail of privileged workspace activity.
-
+### Audit and security
 ![PulseOps Audit and Security dashboard](docs/images/dashboard-audit-security.svg)
 
-### 11. Runbooks & Escalation
-Keep operational procedures and escalation paths close to incident workflows.
-
+### Runbooks and escalation
 ![PulseOps Runbooks and Escalation dashboard](docs/images/dashboard-runbooks-escalation.svg)
 
-### 12. Platform Settings & Integrations
-Configure workspace details, integration status, environments, and security controls.
-
+### Platform settings and integrations
 ![PulseOps Platform Settings dashboard](docs/images/dashboard-platform-settings.svg)
 
-## Current stack
-- **Web:** Next.js 15, React 19, TypeScript
-- **API:** NestJS 10, TypeScript
-- **Data:** PostgreSQL 16, Prisma 6
-- **Local infrastructure:** Docker Compose, Redis
-- **CI:** GitHub Actions, Jest, ts-jest
+</details>
 
-## Prerequisites
-- Node.js 20 or newer
-- pnpm 10
-- Docker Engine/Desktop with Compose
+## Tech stack
 
-## Local setup
-1. Install dependencies: `pnpm install`.
-2. Create local environment files: `cp .env.example .env` and `cp apps/api/.env.example apps/api/.env`.
-3. Start PostgreSQL and Redis: `docker compose up -d postgres redis`.
-4. Set a strong local `JWT_SECRET` in `apps/api/.env`. Never use the example value outside local development.
-5. Generate Prisma Client and validate: `pnpm db:generate` and `pnpm --filter @pulseops/api prisma:validate`.
-6. Apply migrations: `pnpm --filter @pulseops/api prisma:migrate`.
-7. Run API unit tests: `pnpm test:api`.
-8. Run PostgreSQL integration tests: `pnpm test:integration` (requires the migrated test database in `DATABASE_URL`).
-9. Run browser tests: `pnpm test:browser` (requires the API and web app running, plus Playwright Chromium installed with `pnpm --filter @pulseops/web exec playwright install chromium`).
-10. Start API and web in separate terminals: `pnpm dev:api` and `pnpm dev:web`.
+| Layer | Technologies |
+| --- | --- |
+| Frontend | Next.js 15, React 19, TypeScript |
+| Backend | NestJS 10, TypeScript |
+| Database and ORM | PostgreSQL 16, Prisma 6 |
+| Local services | Docker Compose, Redis |
+| Testing | Jest, ts-jest, Playwright |
+| CI | GitHub Actions |
+| Observability | Structured logs, Prometheus exposition, W3C trace context, optional OTLP/HTTP |
 
-## Local endpoints
-- Web: http://localhost:3000
-- API liveness: http://localhost:4000/api/v1/health
-- API readiness: http://localhost:4000/api/v1/ready
-- Authentication: `POST /api/v1/auth/register`, `POST /api/v1/auth/login`
-- Service Catalog: `GET/POST/PATCH/DELETE /api/v1/services` (Bearer token required)
-- Teams: `GET/POST/PATCH/DELETE /api/v1/teams` (Bearer token required; writes require ADMIN)
-- Members: `GET /api/v1/members`, `POST /api/v1/members/invitations`, `PATCH /api/v1/members/:userId/role`, and `DELETE /api/v1/members/:userId` (administrative actions require ADMIN).
-- Invitation acceptance: `POST /api/v1/auth/accept-invitation` (single-use seven-day token; email delivery is not configured yet).
-- Incidents: `GET/POST /api/v1/incidents`, `PATCH /api/v1/incidents/:id/assign`, and `POST /api/v1/incidents/:id/acknowledge` or `/resolve`.
-- Audit trail: `GET /api/v1/audit-logs` (ADMIN only; records privileged workspace and incident actions).
-- Service dependencies: `GET/POST/DELETE /api/v1/service-dependencies` (writes require ADMIN; cycle prevention enabled).
-- SLOs: `GET /api/v1/slos`, `POST /api/v1/slos/services/:serviceId`, `POST /api/v1/slos/:id/samples`, and `DELETE /api/v1/slos/:id` (writes require ADMIN; sample ingestion is manual).
-- Metrics: `GET /api/v1/metrics` (Prometheus exposition; `METRICS_TOKEN` required in production).
-- GitHub: `POST /api/v1/integrations/github/repositories`, `GET /api/v1/integrations/github/repositories`, `DELETE /api/v1/integrations/github/repositories/:id`; webhook receiver `POST /api/v1/integrations/github/webhook`.
-- DORA: `GET /api/v1/engineering-metrics/dora?windowDays=30` (7–90 day window; requires connected GitHub repositories and configured webhooks).
-- FinOps: `POST /api/v1/finops/cost-records/import`, `GET /api/v1/finops/costs`, `GET/POST /api/v1/finops/budgets`, and `POST /api/v1/finops/budgets/evaluate` (normalized JSON imports; no cloud billing API integration yet).\n- Runbooks: `GET/POST /api/v1/services/:serviceId/runbooks` and `DELETE /api/v1/services/:serviceId/runbooks/:runbookId` (mutations require ADMIN).
-- Escalation: `GET/PUT /api/v1/services/:serviceId/escalation-policy` and `POST /api/v1/incidents/:id/escalate` (policy writes require ADMIN; escalation is manually triggered and audited).
+## Run locally
 
-The readiness endpoint checks PostgreSQL and returns HTTP 503 if the database is unavailable. Team and service APIs derive workspace scope from the verified JWT; clients cannot override tenant IDs.
+### Prerequisites
 
-## Automated quality gates
+- Node.js 20+
+- pnpm 10 (the repository specifies pnpm 10.4.1)
+- Docker Engine or Docker Desktop with Compose
 
-The `Quality Gates` GitHub Actions workflow provisions PostgreSQL 16, generates Prisma Client, applies all versioned Prisma migrations to an isolated CI database, runs API unit and PostgreSQL integration tests, builds both applications, and executes Playwright Chromium tests against the running API and web UI. The browser suite covers workspace registration/sign-in, Team Management CRUD, service ownership assignment, workspace invitations, member read-only access, Service Catalog CRUD, incident acknowledgement/resolution, dependency graph creation, SLO creation and sample recording, and the ADMIN audit viewer. Team and Service operations use the authenticated workspace-scoped API.
+### Setup
 
-Integration tests use a dedicated Jest configuration and are intentionally excluded from the fast unit-test command.
+```bash
+# Install dependencies
+pnpm install
 
-## Environment variables
-See the root `.env.example`, `apps/api/.env.example`, and `apps/web/.env.example`. Environment files are local-only and must not be committed.
+# Create local environment files
+cp .env.example .env
+cp apps/api/.env.example apps/api/.env
 
-## Planned capabilities
-- Cloud cost import and allocation
-- Metrics, logs, and traces
-- Runbook references and escalation metadata
-- SLI/SLO and error-budget tracking
-- FinOps and cloud cost allocation
-- AI-assisted incident analysis with human-approved remediation
+# Start PostgreSQL and Redis
+docker compose up -d postgres redis
 
-See [ROADMAP.md](docs/ROADMAP.md) for implementation status. Planned features are not represented as completed functionality.
+# Configure a strong local JWT_SECRET in apps/api/.env.
+# Never use the example secret outside local development.
 
-## Engineering principles
-1. Build tested vertical slices before splitting into distributed services.
-2. Label live, mocked, and planned integrations honestly.
-3. Enforce authorization in the API, not only in the UI.
-4. Require human approval for risky production actions.
-5. Design for least privilege, auditability, and secure secret handling.
-6. Instrument services with logs, metrics, and traces.
+# Generate Prisma Client and validate the schema
+pnpm db:generate
+pnpm --filter @pulseops/api prisma:validate
+
+# Apply database migrations
+pnpm --filter @pulseops/api prisma:migrate
+```
+
+Start the API and web application in separate terminals:
+
+```bash
+pnpm dev:api
+pnpm dev:web
+```
+
+| Service | Local URL |
+| --- | --- |
+| Web application | http://localhost:3000 |
+| API liveness | http://localhost:4000/api/v1/health |
+| API readiness | http://localhost:4000/api/v1/ready |
+
+For browser tests, install Playwright Chromium first:
+
+```bash
+pnpm --filter @pulseops/web exec playwright install chromium
+```
+
+## Tests and quality gates
+
+Run the available test suites from the repository root:
+
+```bash
+# API unit tests
+pnpm test:api
+
+# PostgreSQL integration tests
+pnpm test:integration
+
+# Browser / end-to-end tests
+pnpm test:browser
+
+# Build all workspace packages that define a build script
+pnpm build
+```
+
+The GitHub Actions quality workflow provisions PostgreSQL, applies versioned migrations, runs API unit and integration tests, builds the applications, and executes Playwright browser tests. Integration tests use a dedicated Jest configuration and are separate from the faster unit-test command.
+
+## API surface
+
+The API is versioned under `/api/v1`. Main resource areas include:
+
+- **Authentication:** `/auth`
+- **Services and dependencies:** `/services`, `/service-dependencies`
+- **Teams and members:** `/teams`, `/members`
+- **Incidents and audit events:** `/incidents`, `/audit-logs`
+- **Reliability:** `/slos`
+- **Metrics:** `/metrics`
+- **GitHub integration and DORA metrics:** `/integrations/github`, `/engineering-metrics/dora`
+- **Cost records and budgets:** `/finops`
+
+See [API conventions and endpoint details](docs/API.md) for request behavior, authorization, and limitations.
+
+## Configuration and security
+
+Environment variable examples are maintained alongside each application:
+
+- Root: `.env.example`
+- API: `apps/api/.env.example`
+- Web: `apps/web/.env.example`
+
+Keep real credentials in local environment files or deployment secret stores. Do not commit secrets or production data. The API enforces tenant authorization server-side; client-supplied tenant identifiers are not trusted.
+
+Additional details: [Security model](docs/SECURITY.md).
 
 ## Documentation
-- [Architecture](docs/ARCHITECTURE.md)
+
+- [Architecture and system boundaries](docs/ARCHITECTURE.md)
 - [Database design](docs/DATABASE.md)
 - [API conventions](docs/API.md)
 - [Security model](docs/SECURITY.md)
 - [Deployment strategy](docs/DEPLOYMENT.md)
-- [Roadmap](docs/ROADMAP.md)
-- [Contributing](CONTRIBUTING.md)
+- [Roadmap and implementation status](docs/ROADMAP.md)
+- [Contribution guidelines](CONTRIBUTING.md)
+
+## Live demo
+
+**[Open the PulseOps demo](https://pulse-ops-enterprise-developer-plat.vercel.app)**
+
+The demo points to the deployed frontend. Features that depend on the API, database, email, file storage, or other external services may require corresponding backend services and environment variables to be configured. This is a portfolio demonstration, not a production service.
+
+## Engineering principles
+
+1. Build tested vertical slices before splitting into distributed services.
+2. Enforce authorization in the API, not only in the UI.
+3. Label live, illustrative, and planned integrations honestly.
+4. Require human approval for risky production actions.
+5. Design for least privilege, auditability, and secure secret handling.
+6. Instrument services with useful logs, metrics, and traces.
 
 ## License
-A license has not yet been selected. Until one is added, all rights are reserved by the repository owner.
 
-### GitHub webhook setup for delivery intelligence
-
-Connect a service to its GitHub repository as an ADMIN, set `GITHUB_WEBHOOK_SECRET` in the API environment, and configure the repository's webhook to send JSON `pull_request` and `deployment_status` events to `/api/v1/integrations/github/webhook`. The DORA endpoint returns null for metrics without sufficient source data; see [API documentation](docs/API.md) for metric definitions and limitations.
-
-Service-linked incidents can be escalated manually through the API. The selected escalation contact is recorded in the incident timeline and audit log; external notification delivery and automatic timers are intentionally not claimed yet.
-
-## Live Demo
-
-**Frontend:** [Open Live Demo](https://pulse-ops-enterprise-developer-plat.vercel.app)
-
-> This link points to the deployed frontend. Features that depend on the API, database, email, file storage, or other external services may require the corresponding backend services and environment variables to be configured. Use test data only; this demo is not a production service.
+No license has been selected yet. Until a license is added, all rights are reserved by the repository owner.
