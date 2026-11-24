@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 export interface AuthenticatedUser{sub:string;email:string;tenantId:string;tenantSlug:string;role:'ADMIN'|'MEMBER';sid:string;}
 @Injectable()
+// Authenticate each protected request and attach the verified principal for downstream authorization.
 export class JwtAuthGuard implements CanActivate{
  constructor(private readonly jwt:JwtService,private readonly prisma:PrismaService){}
  async canActivate(context:ExecutionContext):Promise<boolean>{
