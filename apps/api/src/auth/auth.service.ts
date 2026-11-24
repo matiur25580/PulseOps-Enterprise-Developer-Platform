@@ -12,6 +12,7 @@ type SessionUser={id:string;email:string;name:string}; type SessionTenant={id:st
 @Injectable()
 export class AuthService {
  constructor(private readonly prisma:PrismaService,private readonly jwt:JwtService){}
+ // Store rate-limit counters in PostgreSQL so limits remain consistent across API instances.
  async assertRateLimit(scope:string,subject:string,limit:number,windowSeconds:number):Promise<void>{
   const key=createHash('sha256').update(`pulseops:${scope}:${subject}`).digest('hex');
   await this.prisma.$executeRaw`
